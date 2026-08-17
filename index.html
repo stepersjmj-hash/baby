@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#fdf6e3">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="아이놀이">
+<title>아이놀이 · 색칠하기</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
+<link rel="icon" href="assets/icon-192.png">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<!-- ───────────────────────── 홈 ───────────────────────── -->
+<section id="screen-home" class="screen is-active">
+  <header class="home-head">
+    <h1>무엇을 하고 놀까?</h1>
+    <button id="btn-gallery" class="chip" type="button">🖼️ 내 그림</button>
+  </header>
+
+  <div id="activity-grid" class="grid"></div>
+
+  <footer class="home-foot">
+    <span id="install-hint" class="hint"></span>
+  </footer>
+</section>
+
+<!-- ───────────────────────── 색칠하기 ───────────────────────── -->
+<section id="screen-coloring" class="screen">
+
+  <!-- 위쪽 도구 트레이 -->
+  <div class="tray tray-top">
+    <div class="tools" id="tool-strip"></div>
+
+    <div class="tray-right">
+      <div class="sizes" id="size-strip"></div>
+      <button id="btn-color" class="swatch-btn" type="button" aria-label="색 고르기">
+        <span class="swatch-dot" id="current-swatch"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- 그림판 -->
+  <div class="stage" id="stage">
+    <div class="paper" id="paper">
+      <canvas id="c-paint"></canvas>
+      <canvas id="c-stroke"></canvas>
+      <canvas id="c-lines"></canvas>
+      <div class="paper-rings" aria-hidden="true"></div>
+    </div>
+  </div>
+
+  <!-- 아래쪽 버튼 -->
+  <div class="tray tray-bottom">
+    <button class="rbtn" id="btn-home" type="button"><span>🏠</span></button>
+    <button class="rbtn" id="btn-undo" type="button" disabled><span>↩️</span></button>
+    <button class="rbtn" id="btn-redo" type="button" disabled><span>↪️</span></button>
+    <div class="spacer"></div>
+    <button class="rbtn hold" id="btn-clear" type="button"><span>🧹</span><i class="hold-fill"></i></button>
+    <button class="rbtn" id="btn-save" type="button"><span>💾</span></button>
+    <button class="rbtn wide" id="btn-next" type="button"><span>🖼️ 다른 그림</span></button>
+  </div>
+
+  <!-- 색 고르기 팝오버 -->
+  <div class="popover" id="popover-color" hidden>
+    <div class="pop-inner">
+      <div class="pop-row" id="recent-colors"></div>
+      <div class="pop-swatches" id="palette-grid"></div>
+      <button class="pop-close" id="btn-color-close" type="button">✕</button>
+    </div>
+  </div>
+
+  <!-- 그림 고르기 시트 -->
+  <div class="sheet" id="sheet-pages" hidden>
+    <div class="sheet-inner">
+      <h2>어떤 그림에 색칠할까?</h2>
+      <div class="page-grid" id="page-grid"></div>
+      <button class="pop-close" id="btn-pages-close" type="button">✕</button>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────────────── 갤러리 ───────────────────────── -->
+<section id="screen-gallery" class="screen">
+  <header class="home-head">
+    <button class="chip" id="btn-gallery-back" type="button">← 돌아가기</button>
+    <h1>내 그림</h1>
+  </header>
+  <div class="gallery-grid" id="gallery-grid"></div>
+</section>
+
+<div id="toast" class="toast" hidden></div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
