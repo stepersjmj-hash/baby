@@ -43,6 +43,38 @@ const widthFor = (b, base, p) => {
   return base * (lo + (hi - lo) * Math.max(0, Math.min(1, p)));
 };
 
+/* ── 입력점 사이를 붓 굵기 기준으로 잘게 나눠 그린다 ──────────────
+   붓은 획을 alpha < 1 로 겹쳐 칠한다. 그래서 입력점 간격이 붓 굵기만큼
+   벌어지면 겹치는 자리(=입력점)만 진해지고 사이는 연하게 남아,
+   한 획인데도 구슬을 꿴 것처럼 점이 줄줄이 생긴다. 빠르게 그을수록
+   이벤트 간격이 벌어지니 더 심하다. 도장을 찍는 붓(꽃)은 한술 더 떠서
+   입력점마다 뭉쳐 찍히고 그 사이가 텅 빈다.
+
+   여기서 나눠 주면 붓 코드는 긋는 속도를 신경 쓰지 않아도 된다.
+   비용은 이벤트 수가 아니라 실제로 그은 거리에 비례한다 —
+   천천히 그으면 (dist 가 작아서) 쪼개지 않으므로 느려지지 않는다. */
+const MAX_SUB = 64;                       // 폭주 방지 상한
+
+function drawSeg(b, ctx, prev, q, st) {
+  if (!prev) { b.seg(ctx, { ...q, x: q.x - 0.01 }, q, st); return; }   // 획의 첫 점 = 점 하나
+  const pw = prev.w ?? q.w;
+  const span = Math.max(1, Math.min(pw, q.w) * 0.25);
+  const dist = Math.hypot(q.x - prev.x, q.y - prev.y);
+  const n = Math.min(MAX_SUB, Math.max(1, Math.ceil(dist / span)));
+  let a = prev;
+  for (let i = 1; i <= n; i++) {
+    const t = i / n;
+    const m = (i === n) ? q : {
+      x: prev.x + (q.x - prev.x) * t,
+      y: prev.y + (q.y - prev.y) * t,
+      p: prev.p + (q.p - prev.p) * t,
+      w: pw + (q.w - pw) * t
+    };
+    b.seg(ctx, a, m, st);
+    a = m;
+  }
+}
+
 export function initColoring({ toast, goHome }) {
   const $ = (id) => document.getElementById(id);
 
@@ -136,12 +168,16 @@ export function initColoring({ toast, goHome }) {
 
     // rec.a = 이어 그린 획의 출발점(앞 획의 끝점). 이게 있어야 재생할 때도
     // 첫 점이 "점 하나"로 찍히지 않고 앞 획과 이어진 선으로 그려진다.
-    let prev = rec.a ? { x: rec.a[0] * W, y: rec.a[1] * H, p: rec.pts[2] ?? 0.5 } : null;
+    let prev = null;
+    if (rec.a) {
+      prev = { x: rec.a[0] * W, y: rec.a[1] * H, p: rec.pts[2] ?? 0.5 };
+      prev.w = widthFor(b, st.base, prev.p);
+    }
     const n = rec.pts.length / 3;
     for (let i = 0; i < n; i++) {
       const q = { x: rec.pts[i * 3] * W, y: rec.pts[i * 3 + 1] * H, p: rec.pts[i * 3 + 2] };
       q.w = widthFor(b, st.base, q.p);
-      b.seg(target, prev || { ...q, x: q.x - 0.01 }, q, st);
+      drawSeg(b, target, prev, q, st);
       prev = q;
     }
     if (!b.direct) {
@@ -235,8 +271,7 @@ export function initColoring({ toast, goHome }) {
         Math.hypot(q.x - c.prev.x, q.y - c.prev.y) < (c.b.step ?? 1.2) * DPR) return;
 
     q.w = widthFor(c.b, c.st.base, q.p);
-    const target = c.b.direct ? pctx : sctx;
-    c.b.seg(target, c.prev || { ...q, x: q.x - 0.01 }, q, c.st);
+    drawSeg(c.b, c.b.direct ? pctx : sctx, c.prev, q, c.st);
     c.rec.pts.push(q.x / W, q.y / H, q.p);
     c.prev = q;
   }

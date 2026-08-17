@@ -130,7 +130,10 @@ export const BRUSHES = {
     init(st) { st.hue = st.seed % 360; },
     seg(ctx, a, b, st) {
       const w = b.w, r = st.rnd;
-      const n = Math.max(3, Math.round(w / 4));
+      // 알갱이 수는 "호출 횟수"가 아니라 "그은 거리"에 비례해야 한다.
+      // 고정 개수로 두면 획을 잘게 나눠 그릴 때 알갱이가 쏟아진다.
+      const len = Math.hypot(b.x - a.x, b.y - a.y);
+      const n = Math.max(1, Math.round(len / Math.max(2, w * 0.13)));
       for (let i = 0; i < n; i++) {
         const t = r();
         const x = a.x + (b.x - a.x) * t + (r() - 0.5) * w * 1.6;
@@ -140,7 +143,7 @@ export const BRUSHES = {
         ctx.fillStyle = r() < 0.35 ? `hsl(${(st.hue + r() * 60) % 360} 95% 72%)` : st.color;
         ctx.beginPath(); ctx.arc(x, y, s, 0, 6.283); ctx.fill();
       }
-      if (r() < 0.18) {                       // 가끔 반짝 별 하나
+      if (r() < len / (w * 8)) {              // 가끔 반짝 별 하나 (역시 거리에 비례)
         const s = w * 0.5;
         ctx.globalAlpha = 0.9; ctx.fillStyle = '#fff';
         ctx.save(); ctx.translate(b.x, b.y);
