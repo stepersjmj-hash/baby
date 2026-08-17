@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>펜 입력 진단</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;
+            font:15px/1.45 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;
+            -webkit-user-select:none;user-select:none;background:#f4f1ea;color:#231b12}
+  body{display:flex;flex-direction:column}
+  header{flex:0 0 auto;background:#fff;padding:10px 14px;box-shadow:0 2px 8px rgba(0,0,0,.12);z-index:2}
+  #stat{display:flex;flex-wrap:wrap;gap:8px 18px;font-weight:700}
+  #stat b{font-size:22px;font-variant-numeric:tabular-nums}
+  #stat .bad b{color:#d92b2b}
+  .row{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
+  button{font:inherit;font-weight:800;border:0;border-radius:12px;padding:11px 18px;
+         background:#e9e0cd;color:inherit;min-height:46px}
+  button.on{background:#ff8a3d;color:#fff}
+  #hint{font-weight:600;opacity:.65;font-size:13px}
+  /* 진단 대상: 여기만 touch-action 을 스위치로 바꿔 가며 비교한다 */
+  #pad{flex:1;position:relative;min-height:0;background:#fff;margin:10px;border-radius:12px;
+       box-shadow:0 4px 16px rgba(0,0,0,.12);overflow:hidden;touch-action:none}
+  canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+  #log{flex:0 0 34%;overflow-y:auto;background:#1c1712;color:#d8ccb8;font:12px/1.5 ui-monospace,Menlo,monospace;
+       padding:8px 12px;white-space:pre;touch-action:pan-y}
+  #log .dn{color:#ff8a3d;font-weight:700}
+  #log .cn{color:#ff5b5b;font-weight:700}
+  #log .up{color:#7fd18a}
+</style>
+</head>
+<body>
+
+<header>
+  <div id="stat">
+    <span>획 시작 <b id="s-down">0</b></span>
+    <span class="bad">취소 <b id="s-cancel">0</b></span>
+    <span>뗌 <b id="s-up">0</b></span>
+    <span>최대 공백 <b id="s-gap">0</b>ms</span>
+    <span>합쳐진 점 <b id="s-coal">0</b></span>
+    <span>종류 <b id="s-type">-</b></span>
+  </div>
+  <div class="row">
+    <button id="b-clear">지우기</button>
+    <button id="b-ta" class="on">touch-action: none</button>
+    <button id="b-log">기록 보기</button>
+    <span id="hint">한 번에, 펜을 떼지 말고 길게 그어 보세요</span>
+    <span id="ver" style="font-weight:800"></span>
+  </div>
+</header>
+
+<div id="pad"><canvas id="cv"></canvas></div>
+<div id="log" hidden></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const pad = $('pad'), cv = $('cv'), ctx = cv.getContext('2d');
+const logEl = $('log');
+
+let DPR = Math.min(devicePixelRatio || 1, 2);
+let downs = 0, cancels = 0, ups = 0, maxGap = 0, coal = 0, types = new Set();
+let lastMoveAt = 0, active = null, prev = null;
+let lines = [];   // 기록: {type, t, id, pt, extra}
+
+function fit() {
+  const r = pad.getBoundingClientRect();
+  cv.width = Math.round(r.width * DPR);
+  cv.height = Math.round(r.height * DPR);
+  redraw();
+}
+new ResizeObserver(fit).observe(pad);
+
+const local = (e) => {
+  const r = pad.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * (cv.width / r.width),
+           y: (e.clientY - r.top) * (cv.height / r.height) };
+};
+
+/* ── 그리기: 가공 없이 받은 좌표를 그대로 잇는다 ───────────────
+   앱과 달리 스무딩·간격 건너뛰기·붓 질감이 전혀 없다.
+   그래서 여기서 끊기면 원인은 100% 브라우저가 준 이벤트 쪽이다. */
+let strokes = [];          // [{pts:[{x,y}], startedBy:'down'|'resume'}]
+function redraw() {
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  for (const s of strokes) {
+    ctx.strokeStyle = '#2b2119'; ctx.lineWidth = 2 * DPR;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath();
+    s.pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+    ctx.stroke();
+    const a = s.pts[0];
+    if (a) {                                  // 획이 시작된 자리 = 앱에서 점이 찍히는 자리
+      ctx.fillStyle = '#ff3b30';
+      ctx.beginPath(); ctx.arc(a.x, a.y, 7 * DPR, 0, 6.283); ctx.fill();
+    }
+  }
+  for (const c of cancelMarks) {              // 취소된 자리
+    ctx.strokeStyle = '#0a84ff'; ctx.lineWidth = 3 * DPR;
+    ctx.beginPath();
+    ctx.moveTo(c.x - 9 * DPR, c.y - 9 * DPR); ctx.lineTo(c.x + 9 * DPR, c.y + 9 * DPR);
+    ctx.moveTo(c.x + 9 * DPR, c.y - 9 * DPR); ctx.lineTo(c.x - 9 * DPR, c.y + 9 * DPR);
+    ctx.stroke();
+  }
+}
+let cancelMarks = [];
+
+function push(kind, e, extra) {
+  const t = Math.round(performance.now());
+  lines.push(`${String(t).slice(-6)}  ${kind.padEnd(14)} id=${e.pointerId} ${e.pointerType}` +
+             ` p=${(e.pressure ?? 0).toFixed(2)}${extra ? '  ' + extra : ''}`);
+  if (lines.length > 400) lines.shift();
+  if (!logEl.hidden) renderLog();
+}
+function renderLog() {
+  logEl.textContent = lines.join('\n');
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function down(e) {
+  types.add(e.pointerType);
+  if (active !== null) { push('DOWN(무시:중복)', e); return; }   // 이미 그리는 중
+  active = e.pointerId;
+  downs++;
+  try { pad.setPointerCapture(e.pointerId); } catch (err) { push('capture실패', e, err.name); }
+  e.preventDefault();
+  const p = local(e);
+  strokes.push({ pts: [p] });
+  prev = p; lastMoveAt = performance.now();
+  push('DOWN', e);
+  stats();
+  redraw();
+}
+
+function move(e) {
+  if (e.pointerId !== active) return;
+  e.preventDefault();
+  const now = performance.now();
+  const gap = now - lastMoveAt;
+  if (gap > maxGap) maxGap = gap;
+  lastMoveAt = now;
+
+  const evts = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
+  coal = Math.max(coal, evts.length);
+  const list = evts.length ? evts : [e];
+  const s = strokes[strokes.length - 1];
+  for (const ev of list) s.pts.push(local(ev));
+  if (gap > 60) push('MOVE(느림)', e, `+${Math.round(gap)}ms n=${list.length}`);
+  stats();
+  redraw();
+}
+
+function end(e) {
+  if (e.pointerId !== active) { push('END(다른id)', e, e.type); return; }
+  e.preventDefault();
+  active = null;
+  try { pad.releasePointerCapture(e.pointerId); } catch (err) { /* 이미 풀림 */ }
+  if (e.type === 'pointercancel') { cancels++; cancelMarks.push(local(e)); push('CANCEL', e); }
+  else { ups++; push('UP', e); }
+  stats();
+  redraw();
+}
+
+function stats() {
+  $('s-down').textContent = downs;
+  $('s-cancel').textContent = cancels;
+  $('s-up').textContent = ups;
+  $('s-gap').textContent = Math.round(maxGap);
+  $('s-coal').textContent = coal;
+  $('s-type').textContent = [...types].join('/') || '-';
+}
+
+pad.addEventListener('pointerdown', down, { passive: false });
+window.addEventListener('pointermove', move, { passive: false });
+window.addEventListener('pointerup', end, { passive: false });
+window.addEventListener('pointercancel', end, { passive: false });
+
+// 취소를 유발하는 다른 원인들도 잡아 둔다
+for (const t of ['gesturestart', 'gesturechange', 'touchstart', 'touchcancel', 'visibilitychange'])
+  document.addEventListener(t, (e) => push(t.toUpperCase(), { pointerId: '-', pointerType: '-', pressure: 0 },
+                                           t === 'touchstart' ? `손가락 ${e.touches?.length}개` : ''), { passive: true });
+
+$('b-clear').addEventListener('click', () => {
+  strokes = []; cancelMarks = []; lines = [];
+  downs = cancels = ups = coal = 0; maxGap = 0; types.clear();
+  stats(); redraw(); renderLog();
+});
+$('b-ta').addEventListener('click', () => {
+  const on = pad.style.touchAction !== 'auto';
+  pad.style.touchAction = on ? 'auto' : 'none';
+  cv.style.touchAction = on ? 'auto' : 'none';
+  $('b-ta').classList.toggle('on', !on);
+  $('b-ta').textContent = 'touch-action: ' + (on ? 'auto' : 'none');
+});
+$('b-log').addEventListener('click', () => { logEl.hidden = !logEl.hidden; if (!logEl.hidden) renderLog(); });
+
+/* 서비스 워커가 옛 파일을 물고 있는지 확인한다.
+   앱과 똑같은 경로로 받아 와서 최근 수정의 표식이 들어 있는지 본다. */
+(async () => {
+  const el = $('ver');
+  try {
+    const [css, js] = await Promise.all([
+      fetch('../css/app.css').then(r => r.text()),
+      fetch('../js/coloring/index.js').then(r => r.text())
+    ]);
+    const ok = css.includes('[hidden]') && /\.stage\{[^}]*touch-action:none/s.test(css.replace(/\s+/g, ''))
+               && js.includes('resumeFrom');
+    el.textContent = ok ? '앱 최신 ✓' : '앱이 옛 캐시 ✗ (아이콘 지우고 다시 추가)';
+    el.style.color = ok ? '#1a7f37' : '#d92b2b';
+  } catch { el.textContent = ''; }
+})();
+
+fit(); stats();
+</script>
+</body>
+</html>
