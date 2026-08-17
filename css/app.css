@@ -94,6 +94,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
   padding:10px 16px;background:var(--tray);
   box-shadow:0 2px 10px rgba(120,84,30,.10);
   z-index:5;flex:0 0 auto;
+  touch-action:none;              /* .stage 와 같은 이유 — 트레이에 얹힌 손바닥도 제스처를 못 만들게 */
 }
 .tray-top{border-bottom:1px solid var(--tray-line)}
 .tray-bottom{border-top:1px solid var(--tray-line);box-shadow:0 -2px 10px rgba(120,84,30,.10)}
@@ -102,6 +103,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 
 /* 도구(크레용 모양) */
 .tools{display:flex;gap:6px;align-items:flex-start;flex-wrap:nowrap;overflow-x:auto;
+       touch-action:pan-x;        /* 부모(.tray)가 none 이어도 자기 스크롤은 살린다 */
        scrollbar-width:none;-ms-overflow-style:none}
 .tools::-webkit-scrollbar{display:none}
 
@@ -162,6 +164,10 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .stage{
   flex:1;display:flex;align-items:center;justify-content:center;
   padding:14px;min-height:0;
+  /* 종이 바깥(손바닥이 얹히는 여백)도 제스처를 막아야 한다.
+     여기가 auto 면 손바닥이 닿는 순간 사파리가 확대 제스처로 보고
+     그리는 중인 펜 포인터에 pointercancel 을 쏴서 획이 토막 난다. */
+  touch-action:none;
 }
 .paper{
   position:relative;background:var(--paper);

@@ -101,6 +101,14 @@ for (const p of P.PAGES) {
   `.popover{display:flex}` 를 걸면 작성자 스타일이 브라우저 기본값 `[hidden]{display:none}` 을
   이겨서 오버레이가 계속 화면을 덮는다. 보이는 증상은 "색칠 화면에서 아무것도 안 눌림".
   `css/app.css` 맨 위 `[hidden]{display:none !important}` 가 이걸 막아 준다 — 지우지 말 것.
+- **획 하나 안에서는 점이 생길 수 없다.** 모든 붓의 `seg` 가 `a→b` 를 선으로 잇기 때문이다.
+  펜을 안 뗐는데 점이 찍혔다면 그 스트로크가 여러 `rec` 로 쪼개진 것이고, 원인은 사파리가
+  쏘는 `pointercancel` 이다(손바닥이 종이 밖에 닿아 확대 제스처로 인식됨). 그래서
+  `.stage` 와 `.tray` 에도 `touch-action:none` 을 걸었고, 그래도 끊기면 `rec.cont`/`rec.a` 로
+  다음 획을 앞 획 끝점에 이어 붙인다(`resumeFrom`). 되돌리기는 이 조각들을 묶어서 취소한다.
+- **`tools/selftest.js` 의 전체 지우기 단계는 백그라운드 탭에서 실패한다.** 길게 누르기가
+  `requestAnimationFrame` 으로 진행률을 재는데 `document.hidden` 이면 rAF 가 안 돈다.
+  헤드리스/미리보기 패널에서 돌릴 땐 rAF 를 `setTimeout` 으로 갈아 끼우고 실행할 것.
 - **서비스 워커 캐시.** 파일을 추가·수정하면 `sw.js` 의 `VERSION` 을 올린다.
   안 올려도 네트워크 우선이라 대개 괜찮지만, 오프라인 캐시에 새 파일이 안 들어간다.
   `SHELL` 배열에 새 파일 경로를 넣는 것도 잊지 말 것.

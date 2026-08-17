@@ -71,6 +71,12 @@ export function initColoring({ toast, goHome }) {
   let cur = null;                                      // 진행 중인 획
   let saveTimer = 0;
 
+  /* 브라우저가 끊어 버린 획의 끝점. 곧바로 같은 자리에서 다시 시작하면
+     새 획이 아니라 이어 그리는 것으로 본다 (아래 resumeFrom 참고) */
+  let lastEnd = null;
+  const RESUME_MS = 450;      // 이 시간 안에 다시 닿아야 이어 붙인다
+  const RESUME_DIST = 0.10;   // 캔버스 가로폭 대비 허용 거리
+
   /* ── 레이아웃 ─────────────────────────────────────────── */
   let needDraft = false;
 
@@ -128,7 +134,9 @@ export function initColoring({ toast, goHome }) {
     const target = b.direct ? dctx : sctx;
     if (!b.direct) sctx.clearRect(0, 0, W, H);
 
-    let prev = null;
+    // rec.a = 이어 그린 획의 출발점(앞 획의 끝점). 이게 있어야 재생할 때도
+    // 첫 점이 "점 하나"로 찍히지 않고 앞 획과 이어진 선으로 그려진다.
+    let prev = rec.a ? { x: rec.a[0] * W, y: rec.a[1] * H, p: rec.pts[2] ?? 0.5 } : null;
     const n = rec.pts.length / 3;
     for (let i = 0; i < n; i++) {
       const q = { x: rec.pts[i * 3] * W, y: rec.pts[i * 3 + 1] * H, p: rec.pts[i * 3 + 2] };
@@ -170,18 +178,41 @@ export function initColoring({ toast, goHome }) {
     cStroke.style.mixBlendMode = 'normal';
   }
 
+  /**
+   * 방금 브라우저가 끊은 획을 이어 그리는 상황인가?
+   * 아이패드에서는 손바닥이 닿거나 알림이 뜨면 pointercancel 이 날아와
+   * 펜을 떼지 않았는데도 획이 끝난다. 그대로 새 획을 시작하면 시작점마다
+   * 동그란 점이 찍혀서 "중간에 펜을 뗀 것처럼" 보인다.
+   * @returns 이어 붙일 출발점 {x,y,p} 또는 null
+   */
+  function resumeFrom(pt) {
+    const L = lastEnd;
+    lastEnd = null;
+    if (!L) return null;
+    if (performance.now() - L.at > RESUME_MS) return null;
+    if (L.tool !== tool || L.color !== color || L.sizeIdx !== sizeIdx) return null;
+    if (Math.hypot(pt.x - L.x, pt.y - L.y) > RESUME_DIST * W) return null;
+    return { x: L.x, y: L.y, p: L.p };
+  }
+
   function onStart(pt) {
+    lastEnd = (tool === 'fill' || tool === 'sticker') ? null : lastEnd;
     if (tool === 'fill')    { doFill(pt); return; }
     if (tool === 'sticker') { doSticker(pt); return; }
 
     const b = BRUSHES[tool];
     if (!b) return;
     const seed = (Math.random() * 1e9) | 0;
+    const from = resumeFrom(pt);
+    const rec = { k: 's', b: tool, c: color, z: SIZES[sizeIdx], seed, pts: [] };
+    if (from) {
+      rec.a = [from.x / W, from.y / H];   // 재생용 출발점
+      rec.cont = 1;                       // 되돌리기는 이어진 조각을 묶어서 취소한다
+    }
     cur = {
-      b,
-      rec: { k: 's', b: tool, c: color, z: SIZES[sizeIdx], seed, pts: [] },
+      b, rec,
       st:  { color, seed, rnd: rng(seed), base: SIZES[sizeIdx] * W },
-      prev: null, sm: null
+      prev: from, sm: from ? { x: from.x, y: from.y } : null
     };
     b.init?.(cur.st);
     if (!b.direct) {
@@ -189,7 +220,7 @@ export function initColoring({ toast, goHome }) {
       cStroke.style.opacity = String(b.alpha);
       cStroke.style.mixBlendMode = b.blend === 'multiply' ? 'multiply' : 'normal';
     }
-    addPoint(pt, true);
+    addPoint(pt, !from);
   }
 
   function addPoint(pt, first) {
@@ -210,10 +241,15 @@ export function initColoring({ toast, goHome }) {
     c.prev = q;
   }
 
-  function onEnd() {
+  function onEnd(info) {
     const c = cur;
     if (!c) return;
     cur = null;
+    // 펜을 뗀 게 아니라 브라우저가 끊은 거라면 끝점을 남겨 둔다 → 이어 그리기
+    lastEnd = (info?.canceled && c.prev)
+      ? { at: performance.now(), x: c.prev.x, y: c.prev.y, p: c.prev.p,
+          tool, color, sizeIdx }
+      : null;
     if (!c.rec.pts.length) { sctx.clearRect(0, 0, W, H); resetStrokeLayerStyle(); return; }
     if (!c.b.direct) {
       pctx.save();
@@ -253,8 +289,22 @@ export function initColoring({ toast, goHome }) {
   });
 
   /* ── 되돌리기 / 지우기 ────────────────────────────────── */
-  function undo() { if (recs.length) { redo.push(recs.pop()); replay(); sfx.undo(); scheduleAutosave(); } }
-  function redoOne() { if (redo.length) { const r = redo.pop(); renderRec(r, pctx); recs.push(r); updateButtons(); sfx.tap(); scheduleAutosave(); } }
+  /* 끊겼다 이어진 획(cont)은 아이 눈에 한 획이므로 묶어서 되돌린다 */
+  function undo() {
+    if (!recs.length) return;
+    do { redo.push(recs.pop()); } while (recs.length && redo[redo.length - 1].cont);
+    replay(); sfx.undo(); scheduleAutosave();
+  }
+
+  function redoOne() {
+    if (!redo.length) return;
+    do {
+      const r = redo.pop();
+      renderRec(r, pctx);
+      recs.push(r);
+    } while (redo.length && redo[redo.length - 1].cont);
+    updateButtons(); sfx.tap(); scheduleAutosave();
+  }
 
   function clearAll() {
     recs = []; redo = [];
@@ -274,6 +324,9 @@ export function initColoring({ toast, goHome }) {
   function scheduleAutosave() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
+      // 그리는 도중에는 미룬다. PNG 인코딩은 무거워서 획 한가운데서 돌면
+      // 눈에 띄게 끊긴다 (아이가 잠깐 멈추기만 해도 타이머가 터진다)
+      if (cur) { scheduleAutosave(); return; }
       cPaint.toBlob(b => { if (b) drafts.put(page.id, b).catch(() => {}); }, 'image/png');
     }, 1500);
   }

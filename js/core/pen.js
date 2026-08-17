@@ -64,7 +64,10 @@ export function attachPen(el, opts) {
   }
 
   function down(e) {
-    if (activeId !== null || ignore(e)) return;
+    // 무시할 입력(손바닥 등)도 기본 동작은 막는다. 그냥 흘려보내면 사파리가
+    // 그걸로 확대 제스처를 시작하면서 그리는 중인 펜 포인터를 취소해 버린다.
+    if (ignore(e)) { if (e.pointerType !== 'mouse') e.preventDefault(); return; }
+    if (activeId !== null) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     activeId = e.pointerId;
     try { el.setPointerCapture(e.pointerId); } catch { /* 캡처 실패해도 window 리스너가 받는다 */ }
@@ -100,7 +103,9 @@ export function attachPen(el, opts) {
     e.preventDefault();
     activeId = null;
     try { el.releasePointerCapture(e.pointerId); } catch { /* 이미 풀렸다 */ }
-    onEnd();
+    // canceled = 펜을 뗀 게 아니라 브라우저가 획을 끊은 것.
+    // 받는 쪽에서 다음 획을 이어 붙일지 판단한다.
+    onEnd({ canceled: e.type === 'pointercancel' });
   }
 
   // move/up 은 window 에 건다. 포인터 캡처가 실패하는 브라우저에서도
