@@ -24,6 +24,7 @@ js/
     fill.js               물감통(플러드 필)
     pages.js              밑그림 8종
 assets/icon-*.png         tools/make-icons.mjs 로 생성 (직접 편집하지 말 것)
+tools/serve.mjs           개발용 정적 서버 (윈도우/맥 공통, LAN 주소 출력)
 tools/make-icons.mjs      아이콘 생성기 (외부 패키지 없이 PNG 직접 인코딩)
 tools/selftest.js         브라우저 콘솔에 붙여넣는 자가 점검
 docs/기획.md              콘텐츠 로드맵 · UX 원칙 · 만드는 순서
@@ -32,15 +33,18 @@ docs/기획.md              콘텐츠 로드맵 · UX 원칙 · 만드는 순서
 ## 실행
 
 ```bash
-python -m http.server 8123 --bind 0.0.0.0
+node tools/serve.mjs
 ```
 
-`.claude/launch.json` 에 `baby` 라는 이름으로 등록돼 있어서 preview_start 로도 뜬다.
+`.claude/launch.json` 에 `baby` 로 등록돼 있어 preview_start 로도 뜬다.
 
-**아이패드에서 보기** — PC/Mac과 아이패드가 같은 와이파이에 있어야 한다.
-1. PC의 로컬 IP 확인 (`ipconfig` / `ifconfig`)
-2. 아이패드 사파리에서 `http://<그 IP>:8123`
-3. 공유 버튼 → **홈 화면에 추가** → 전체 화면 앱처럼 실행 + 오프라인 동작
+파이썬 대신 노드로 서버를 띄우는 이유는 세 가지다. **macOS 12.3 부터 `python` 명령이 없고**
+(`python3` 뿐이라 launch.json 이 윈도우/맥에서 갈린다), ES 모듈은 `.js` 의 Content-Type 이
+`text/javascript` 여야 로드되며, 개발 중에는 캐시를 꺼야 한다. `tools/serve.mjs` 가 셋 다 해결한다.
+
+**아이패드에서 보기** — 같은 와이파이여야 한다.
+서버가 시작할 때 `http://192.168.x.x:8123` 형태로 주소를 찍어 준다.
+아이패드 사파리에서 그 주소 → 공유 → **홈 화면에 추가** → 전체 화면 + 오프라인 동작.
 
 ## 자가 점검
 

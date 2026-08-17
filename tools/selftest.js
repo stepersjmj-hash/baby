@@ -35,6 +35,17 @@
 
   const pick = (tool) => document.querySelector(`.tool[data-tool="${tool}"]`).click();
 
+  // 0) 종이 비우기 — 자동 저장된 그림이 남아 있으면 이후 판정이 전부 어긋난다.
+  //    실제 UI 경로(2초 길게 누르기)를 그대로 태운다.
+  {
+    const btn = $('btn-clear');
+    btn.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 99, bubbles: true, cancelable: true }));
+    await sleep(2200);
+    btn.dispatchEvent(new PointerEvent('pointerup', { pointerId: 99, bubbles: true, cancelable: true }));
+    await sleep(60);
+    if (inkCount() > 0) return '실패: 종이를 비우지 못했습니다 (전체 지우기 동작 확인 필요)';
+  }
+
   // 1) 붓 종류별로 실제 픽셀이 찍히는지
   for (const t of ['crayon', 'pencil', 'brush', 'marker', 'rainbow', 'glitter', 'flower']) {
     const before = inkCount();
