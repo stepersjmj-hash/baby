@@ -18,6 +18,12 @@
 
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 
+/* hidden 속성이 항상 이기게 한다.
+   .popover / .sheet 처럼 display 를 클래스로 지정하면 작성자 스타일이
+   브라우저 기본값 [hidden]{display:none} 을 덮어써서, 숨겼다고 생각한
+   전체화면 오버레이가 그대로 남아 모든 터치를 먹어 버린다. */
+[hidden]{display:none !important}
+
 html,body{
   margin:0;padding:0;height:100%;width:100%;
   overflow:hidden;overscroll-behavior:none;

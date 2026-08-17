@@ -97,6 +97,10 @@ for (const p of P.PAGES) {
 
 ## 함정 모음
 
+- **`hidden` 은 클래스의 `display` 에 진다.** 팝오버·시트처럼 `hidden` 으로 여닫는 요소에
+  `.popover{display:flex}` 를 걸면 작성자 스타일이 브라우저 기본값 `[hidden]{display:none}` 을
+  이겨서 오버레이가 계속 화면을 덮는다. 보이는 증상은 "색칠 화면에서 아무것도 안 눌림".
+  `css/app.css` 맨 위 `[hidden]{display:none !important}` 가 이걸 막아 준다 — 지우지 말 것.
 - **서비스 워커 캐시.** 파일을 추가·수정하면 `sw.js` 의 `VERSION` 을 올린다.
   안 올려도 네트워크 우선이라 대개 괜찮지만, 오프라인 캐시에 새 파일이 안 들어간다.
   `SHELL` 배열에 새 파일 경로를 넣는 것도 잊지 말 것.
