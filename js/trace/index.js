@@ -18,7 +18,7 @@
 
 import { attachPen } from '../core/pen.js';
 import { VIEW, buildLevel, createTracer } from '../core/trace.js';
-import { sfx } from '../core/audio.js';
+import { sfx, voice } from '../core/audio.js';
 import { LINES } from './lines.js';
 import { HANGUL } from './hangul.js';
 import { NUMBERS } from './numbers.js';
@@ -27,11 +27,13 @@ import { DOTS } from './dots.js';
 
 /* 코스 정의. guide:false 면 길을 그려 주지 않는다(미로·점 잇기). */
 const COURSES = {
-  trace:  { levels: LINES,   guide: true,  tol: 44, key: 'traceDone' },
-  hangul: { levels: HANGUL,  guide: true,  tol: 40, key: 'hangulDone', from: '✏️', to: '⭐' },
-  number: { levels: NUMBERS, guide: true,  tol: 40, key: 'numberDone', from: '✏️', to: '⭐' },
-  maze:   { levels: MAZES,   guide: false, tol: 40, key: 'mazeDone' },
-  dots:   { levels: DOTS,    guide: false, tol: 60, key: 'dotsDone' }
+  trace:  { levels: LINES,   guide: true,  tol: 44, key: 'traceDone',  voice: 'slide' },
+  hangul: { levels: HANGUL,  guide: true,  tol: 40, key: 'hangulDone', voice: 'write',
+            from: '✏️', to: '⭐' },
+  number: { levels: NUMBERS, guide: true,  tol: 40, key: 'numberDone', voice: 'write',
+            from: '✏️', to: '⭐' },
+  maze:   { levels: MAZES,   guide: false, tol: 40, key: 'mazeDone',   voice: 'scurry' },
+  dots:   { levels: DOTS,    guide: false, tol: 60, key: 'dotsDone',   voice: null }
 };
 
 const DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -70,6 +72,14 @@ export function initPractice({ toast, goHome }) {
   let filled = [];                      // 획별로 어디까지 칠했는지
   let drawing = false, party = null;
   let raf = 0, advanceTimer = 0, lastBeep = 0;
+
+  /* 펜이 닿아 있는 동안 계속 나는 소리 (선 긋기=미끄러짐, 한글·숫자=사각사각,
+     미로=또각또각). 점 잇기만 없다 — 점에 닿을 때 울리는 게 더 분명하다. */
+  let vox = null, voxAt = 0, voxPt = null;
+
+  /* 점 잇기: 각 점이 경로의 몇 번째 점인지 미리 찾아 둔다.
+     진행이 그 지점을 넘으면 "딩" 하고 한 음씩 올라간다. */
+  let dotAt = [], dotsHit = 0;
 
   /* ── 레이아웃 ─────────────────────────────────────────── */
   function layout() {
@@ -123,11 +133,13 @@ export function initPractice({ toast, goHome }) {
 
     if (level.dots) {                                   // 점 잇기: 번호 붙은 점
       level.dots.forEach(([x, y], i) => {
-        gctx.fillStyle = '#fff';
-        gctx.strokeStyle = '#c9a86a'; gctx.lineWidth = 3 * S;
+        const hit = i < dotsHit;                        // 이미 지나온 점은 색이 찬다
+        gctx.fillStyle = hit ? '#ffd166' : '#fff';
+        gctx.strokeStyle = hit ? '#ff8a3d' : '#c9a86a';
+        gctx.lineWidth = 3 * S;
         gctx.beginPath(); gctx.arc(x * S, y * S, 26 * S, 0, 6.283);
         gctx.fill(); gctx.stroke();
-        gctx.fillStyle = '#6b5c47';
+        gctx.fillStyle = hit ? '#7a4a12' : '#6b5c47';
         gctx.font = `800 ${28 * S}px system-ui,sans-serif`;
         gctx.textAlign = 'center'; gctx.textBaseline = 'middle';
         gctx.fillText(String(i + 1), x * S, y * S + S);
@@ -257,12 +269,23 @@ export function initPractice({ toast, goHome }) {
 
   /* ── 펜 입력 ──────────────────────────────────────────── */
   function feed(pt) {
+    // 다 끝난 뒤에도 펜을 떼지 않으면 계속 allDone 이 돌아온다.
+    // 그대로 두면 팡파르가 겹쳐 울리고, 더 나쁘게는 자동 넘어가기 타이머가
+    // 매번 다시 시작돼서 다음 단계로 영영 안 넘어간다.
+    if (tracer.finished) return { on: false, advanced: false, strokeDone: false, allDone: true };
     const r = tracer.feed(pt.x / S, pt.y / S);
     if (r.advanced) {
       paintProgress();
       const now = performance.now();
-      if (now - lastBeep > 90) { sfx.step(tracer.overall()); lastBeep = now; }
+      if (now - lastBeep > 90) { sfx.step(tracer.overall(), courseId); lastBeep = now; }
+      // 점 잇기: 다음 점을 지났으면 한 음 올려 "딩"
+      while (dotsHit < dotAt.length && tracer.index >= dotAt[dotsHit]) {
+        sfx.dot(dotsHit, dotAt.length);
+        dotsHit++;
+        drawGuide();
+      }
     }
+    if (r.strokeDone && !r.allDone) sfx.strokeDone(tracer.stroke, level.paths.length);
     if (r.allDone) finish();
     else if (r.advanced || r.strokeDone) drawFx();
     return r;
@@ -275,7 +298,8 @@ export function initPractice({ toast, goHome }) {
       buildStrip();
     }
     ictx.clearRect(0, 0, W, H);
-    sfx.cheer();
+    vox?.stop(); vox = null;          // 쓰는 소리를 끄고 팡파르만 들리게
+    sfx.cheer(courseId);
     celebrate();
     toast('잘했어요! 🎉');
     clearTimeout(advanceTimer);
@@ -294,6 +318,9 @@ export function initPractice({ toast, goHome }) {
       drawing = true;
       ictx.clearRect(0, 0, W, H);                     // 시도할 때마다 자국은 새로
       inkPrev = pt;
+      vox?.stop();
+      vox = course.voice ? voice(course.voice) : null;
+      voxAt = performance.now(); voxPt = pt;
       feed(pt);
       animate();
     },
@@ -312,8 +339,20 @@ export function initPractice({ toast, goHome }) {
         inkPrev = pt;
         if (feed(pt).allDone) break;
       }
+      const last = pts[pts.length - 1];
+      if (last) {
+        const now = performance.now();
+        const dt = Math.max(1, now - voxAt);
+        const d = voxPt ? Math.hypot(last.x - voxPt.x, last.y - voxPt.y) / DPR : 0;
+        voxAt = now; voxPt = last;
+        vox?.move(Math.min(1, d / dt / 3), last.p ?? 0.6);
+      }
     },
-    onEnd: () => { drawing = false; inkPrev = null; animate(); }
+    onEnd: () => {
+      drawing = false; inkPrev = null; voxPt = null;
+      vox?.stop(); vox = null;
+      animate();
+    }
   });
 
   /* ── 단계 이동 ────────────────────────────────────────── */
@@ -324,6 +363,17 @@ export function initPractice({ toast, goHome }) {
     tracer = createTracer(level.paths, { tol: level.tol ?? course.tol });
     party = null;
     drawing = false;
+    vox?.stop(); vox = null;
+    dotsHit = 0;
+    dotAt = (level.dots || []).map(([x, y]) => {          // 점 → 경로 인덱스
+      const p = level.paths[0];
+      let best = 0, bd = Infinity;
+      for (let j = 0; j < p.length; j++) {
+        const d = (p[j].x - x) ** 2 + (p[j].y - y) ** 2;
+        if (d < bd) { bd = d; best = j; }
+      }
+      return best;
+    }).filter((v, i) => i > 0);                           // 1번 점은 출발점이라 뺀다
     localStorage.setItem(course.key + ':at', level.id);
     $('trace-name').textContent = level.name;
     $('btn-trace-prev').disabled = li === 0;
@@ -336,6 +386,7 @@ export function initPractice({ toast, goHome }) {
   function again() {
     tracer.reset();
     party = null;
+    dotsHit = 0;
     clearTimeout(advanceTimer);
     redrawAll();
     sfx.undo();

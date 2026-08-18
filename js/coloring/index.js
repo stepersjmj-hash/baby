@@ -22,7 +22,7 @@ import { attachPen, rng } from '../core/pen.js';
 import { BRUSHES, TOOL_ORDER, SPECIAL, STICKERS, stampText } from './brushes.js';
 import { PAGES, drawPage } from './pages.js';
 import { floodFill, alphaMask, hexToRgba } from './fill.js';
-import { sfx } from '../core/audio.js';
+import { sfx, voice } from '../core/audio.js';
 import { works, drafts } from '../core/store.js';
 
 const DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -101,6 +101,11 @@ export function initColoring({ toast, goHome }) {
   let recs = [];
   let redo = [];
   let cur = null;                                      // 진행 중인 획
+
+  /* 펜이 닿아 있는 동안 계속 나는 소리. 붓마다 재료가 다르다.
+     속도는 "얼마나 빨리 긋고 있나" 를 0~1 로 눌러서 넘긴다 —
+     빨리 그으면 크게·거칠게 난다. */
+  let vox = null, voxAt = 0, voxPt = null;
   let saveTimer = 0;
 
   /* 브라우저가 끊어 버린 획의 끝점. 곧바로 같은 자리에서 다시 시작하면
@@ -251,6 +256,9 @@ export function initColoring({ toast, goHome }) {
       prev: from, sm: from ? { x: from.x, y: from.y } : null
     };
     b.init?.(cur.st);
+    vox?.stop();
+    vox = voice(tool);
+    voxAt = performance.now(); voxPt = pt;
     if (!b.direct) {
       sctx.clearRect(0, 0, W, H);
       cStroke.style.opacity = String(b.alpha);
@@ -277,6 +285,7 @@ export function initColoring({ toast, goHome }) {
   }
 
   function onEnd(info) {
+    vox?.stop(); vox = null; voxPt = null;
     const c = cur;
     if (!c) return;
     cur = null;
@@ -316,10 +325,24 @@ export function initColoring({ toast, goHome }) {
     sfx.sticker();
   }
 
+  /** 마지막 입력점 사이의 속도를 0~1 로 눌러서 돌려준다 (px/ms 를 3 으로 나눔) */
+  function penSpeed(pt) {
+    const now = performance.now();
+    const dt = Math.max(1, now - voxAt);
+    const d = voxPt ? Math.hypot(pt.x - voxPt.x, pt.y - voxPt.y) / DPR : 0;
+    voxAt = now; voxPt = pt;
+    return Math.min(1, d / dt / 3);
+  }
+
   attachPen(paper, {
     getSize: () => [W, H],
     onStart,
-    onMove: (pts) => { if (cur) for (const p of pts) addPoint(p, false); },
+    onMove: (pts) => {
+      if (!cur) return;
+      for (const p of pts) addPoint(p, false);
+      const last = pts[pts.length - 1];
+      vox?.move(penSpeed(last), last.p);
+    },
     onEnd
   });
 
@@ -420,7 +443,7 @@ export function initColoring({ toast, goHome }) {
     for (const el of document.querySelectorAll('.tool'))
       el.classList.toggle('is-on', el.dataset.tool === id);
     updateSwatchButton();
-    sfx.tool();
+    sfx.tool(id);
     if (id === 'sticker') openPopover();          // 스티커는 무엇을 찍을지 먼저 고른다
   }
 

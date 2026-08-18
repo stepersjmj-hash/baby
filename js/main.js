@@ -4,7 +4,7 @@
 
 import { initColoring } from './coloring/index.js';
 import { initPractice } from './trace/index.js';
-import { unlock, sfx } from './core/audio.js';
+import { unlock, sfx, setMuted, isMuted } from './core/audio.js';
 import { works } from './core/store.js';
 
 const $ = (id) => document.getElementById(id);
@@ -124,6 +124,20 @@ const ACTIVITY_APPS = {
 };
 
 buildHome();
+/* 소리 켜기/끄기. 부모 모드가 생기기 전까지는 홈에 그냥 둔다 —
+   아이가 눌러도 되돌릴 수 있는 동작이라 잠글 이유가 없다. */
+function paintSoundBtn() {
+  const b = $('btn-sound');
+  b.textContent = isMuted() ? '🔇' : '🔊';
+  b.classList.toggle('is-off', isMuted());
+}
+paintSoundBtn();
+$('btn-sound').addEventListener('click', () => {
+  setMuted(!isMuted());
+  paintSoundBtn();
+  if (!isMuted()) { unlock(); sfx.tap(); }
+});
+
 $('btn-gallery').addEventListener('click', () => { sfx.tap(); show('gallery'); buildGallery(); });
 $('btn-gallery-back').addEventListener('click', () => { sfx.tap(); show('home'); });
 
