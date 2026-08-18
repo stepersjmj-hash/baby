@@ -196,6 +196,11 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 #t-guide{z-index:2}
 #t-fill{z-index:3}
 #t-fx{z-index:4}
+
+/* 짝 맞추기 레이어 */
+#m-board{z-index:1}
+#m-link{z-index:2}
+#m-drag{z-index:3}
 .paper-rings{
   position:absolute;top:0;left:0;right:0;height:16px;z-index:4;
   background:repeating-linear-gradient(90deg,
@@ -204,7 +209,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 }
 
 /* ───────────── 따라 그리기 ───────────── */
-#screen-trace{background:var(--bg)}
+#screen-trace,#screen-match{background:var(--bg)}
 
 .lvl{
   position:relative;
@@ -217,6 +222,14 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .lvl .lbl{font-size:10px;font-weight:800;opacity:.55}
 .lvl .star{position:absolute;top:-4px;right:-4px;font-size:15px}
 .lvl.is-on{background:#fff3df;border-color:var(--accent)}
+
+/* 난이도는 색 띠로만 알린다 — 글자를 못 읽는 나이라 하/중/상을 써 봐야 소용없다 */
+.lvl[data-hard]::after{
+  content:'';position:absolute;left:14px;right:14px;bottom:5px;height:3px;border-radius:3px;
+}
+.lvl[data-hard="1"]::after{background:#7fd18a}
+.lvl[data-hard="2"]::after{background:#ffc94d}
+.lvl[data-hard="3"]::after{background:#ff8a6b}
 
 .lvl-name{
   font-size:19px;font-weight:800;min-width:104px;text-align:center;

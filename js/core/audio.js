@@ -185,7 +185,9 @@ const CHEER = {
   maze:   () => { tone(300, .10, 'square', .07, 0, 480);              // 치즈에 도착!
                   seq([659, 880, 1047], .24, 'triangle', .10, .08); },
   dots:   () => { hiss(.35, { gain: .05, freq: 900, to: 5000, type: 'bandpass', q: .6 });
-                  seq([1047, 1319, 1568, 2093], .28, 'sine', .08, .06); }
+                  seq([1047, 1319, 1568, 2093], .28, 'sine', .08, .06); },
+  match:  () => { seq([659, 831, 988, 1319], .30, 'sine', .09, .075);
+                  tone(330, .55, 'triangle', .05, .04); }
 };
 
 export const sfx = {
@@ -208,5 +210,17 @@ export const sfx = {
              tone(scale[Math.min(scale.length - 1, i)], .18, 'sine', .10);
              tone(scale[Math.min(scale.length - 1, i)] * 2, .10, 'triangle', .04, .01);
            },
-  cheer:   (course = 'trace') => (CHEER[course] || CHEER.trace)()
+  cheer:   (course = 'trace') => (CHEER[course] || CHEER.trace)(),
+
+  /** 짝을 하나 맞췄다 — 맞출수록 한 음씩 올라간다 */
+  pair:    (i = 0, n = 1) => {
+             const scale = [523, 659, 784, 880, 1047, 1175, 1319];
+             const f = scale[Math.min(scale.length - 1, i)];
+             tone(f, .16, 'sine', .10);
+             tone(f * 1.5, .12, 'triangle', .05, .05);
+           },
+
+  /** 짝이 아니다 — "틀렸다" 가 아니라 "아직이야" 정도의 중립음.
+      3~6세 UX 원칙상 벌주는 소리는 만들지 않는다. 낮고 짧고 부드럽게. */
+  again:   () => tone(300, .09, 'sine', .045)
 };
