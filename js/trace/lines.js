@@ -1,5 +1,5 @@
 /* ============================================================
-   trace/paths.js — 선 긋기 코스
+   trace/lines.js — 선 긋기 코스
    ------------------------------------------------------------
    좌표계는 1000×700 (core/trace.js 의 VIEW). 작업 영역은 여백을 두고
    x 140~860, y 130~570 안에서 논다.
@@ -15,7 +15,7 @@
 
 import { poly } from '../core/trace.js';
 
-export const LEVELS = [
+export const LINES = [
   {
     id: 'h', name: '가로줄', ico: '➡️', from: '🐝', to: '🌻',
     strokes: [poly([[150, 350], [850, 350]])]

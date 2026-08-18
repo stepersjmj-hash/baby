@@ -3,7 +3,7 @@
    ============================================================ */
 
 import { initColoring } from './coloring/index.js';
-import { initTrace } from './trace/index.js';
+import { initPractice } from './trace/index.js';
 import { unlock, sfx } from './core/audio.js';
 import { works } from './core/store.js';
 
@@ -14,20 +14,25 @@ const $ = (id) => document.getElementById(id);
 const ACTIVITIES = [
   { id: 'coloring', emoji: '🎨', name: '색칠하기',   desc: '펜으로 자유롭게', ready: true },
   { id: 'trace',    emoji: '✏️', name: '따라 그리기', desc: '점선 따라 쓱쓱', ready: true },
-  { id: 'hangul',   emoji: '🇰🇷', name: '한글 쓰기',   desc: 'ㄱ ㄴ ㄷ 획순' },
-  { id: 'number',   emoji: '🔢', name: '숫자 쓰기',   desc: '1부터 10까지' },
-  { id: 'maze',     emoji: '🌀', name: '미로 찾기',   desc: '길을 그어 탈출' },
-  { id: 'dots',     emoji: '🔗', name: '점 잇기',     desc: '이으면 그림이!' },
+  { id: 'hangul',   emoji: '🇰🇷', name: '한글 쓰기',   desc: 'ㄱ ㄴ ㄷ 획순', ready: true },
+  { id: 'number',   emoji: '🔢', name: '숫자 쓰기',   desc: '1부터 10까지', ready: true },
+  { id: 'maze',     emoji: '🌀', name: '미로 찾기',   desc: '길을 그어 탈출', ready: true },
+  { id: 'dots',     emoji: '🔗', name: '점 잇기',     desc: '이으면 그림이!', ready: true },
   { id: 'match',    emoji: '🧩', name: '짝 맞추기',   desc: '같은 걸 찾아요' },
   { id: 'sort',     emoji: '🗂️', name: '모양 분류',   desc: '끌어다 담기' },
   { id: 'count',    emoji: '🍎', name: '세어보기',    desc: '몇 개일까?' },
   { id: 'spot',     emoji: '🔍', name: '다른 그림 찾기', desc: '눈썰미 대결' }
 ];
 
-/* ── 화면 전환 ───────────────────────────────────────────── */
+/* ── 화면 전환 ─────────────────────────────────────────────
+   따라 그리기류 다섯(선 긋기·한글·숫자·미로·점 잇기)은 화면이 같아서
+   #screen-trace 하나를 공유한다. 러너가 코스만 갈아 끼운다. */
+const SCREEN_OF = { coloring: 'coloring', trace: 'trace', hangul: 'trace',
+                    number: 'trace', maze: 'trace', dots: 'trace' };
+
 function show(name) {
   for (const s of document.querySelectorAll('.screen')) s.classList.remove('is-active');
-  $('screen-' + name).classList.add('is-active');
+  $('screen-' + (SCREEN_OF[name] || name)).classList.add('is-active');
 }
 
 /* ── 토스트 ──────────────────────────────────────────────── */
@@ -57,7 +62,7 @@ function buildHome() {
       if (!a.ready) { toast('아직 준비 중이에요 🙂'); return; }
       sfx.tap();
       show(a.id);
-      ACTIVITY_APPS[a.id].enter();
+      ACTIVITY_APPS[a.id].enter(a.id);
     });
     grid.appendChild(card);
   }
@@ -111,9 +116,11 @@ async function shareBlob(blob) {
 
 /* ── 시작 ────────────────────────────────────────────────── */
 const goHome = () => show('home');
+const coloring = initColoring({ toast, goHome });
+const practice = initPractice({ toast, goHome });
 const ACTIVITY_APPS = {
-  coloring: initColoring({ toast, goHome }),
-  trace:    initTrace({ toast, goHome })
+  coloring,
+  trace: practice, hangul: practice, number: practice, maze: practice, dots: practice
 };
 
 buildHome();

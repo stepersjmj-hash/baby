@@ -1,15 +1,16 @@
 # CLAUDE.md — 아이놀이
 
 3~6세 아이용 아이패드 학습놀이 웹앱(PWA). 애플펜슬 입력이 중심이다.
-현재 구현된 콘텐츠는 **색칠하기**와 **따라 그리기** 둘이고, 나머지 로드맵은
-[docs/기획.md](docs/기획.md)에 있다.
+구현된 콘텐츠는 **색칠하기**, 그리고 궤적 판정 엔진을 공유하는 다섯 가지
+(**따라 그리기 · 한글 쓰기 · 숫자 쓰기 · 미로 찾기 · 점 잇기**)다.
+나머지 로드맵은 [docs/기획.md](docs/기획.md)에 있다.
 
 빌드 도구·의존성 없음. 순수 ES 모듈 + 캔버스. 정적 서버로 그냥 띄우면 된다.
 
 ## 파일 구성
 
 ```
-index.html                앱 셸(홈 / 색칠 / 따라 그리기 / 갤러리 가 한 문서 안에)
+index.html                앱 셸(홈 / 색칠 / 따라 그리기류 / 갤러리 가 한 문서 안에)
 css/app.css               전부. 터치 타겟은 --tap 변수로 통일
 manifest.webmanifest      홈 화면 추가용
 sw.js                     오프라인 캐시 (네트워크 우선)
@@ -25,14 +26,18 @@ js/
     brushes.js            붓 종류별 그리기 로직
     fill.js               물감통(플러드 필)
     pages.js              밑그림 8종
-  trace/
-    index.js              따라 그리기: 길 그리기, 진행 채우기, 칭찬, UI 배선
-    paths.js              선 긋기 코스 12단계 (경로 정의만)
+  trace/                  ← 다섯 활동이 화면·배선을 전부 공유한다
+    index.js              공용 러너: 코스 등록, 길·벽·점 그리기, 진행 채우기, 칭찬
+    lines.js              선 긋기 12단계
+    hangul.js             한글 자모 24자 획순
+    numbers.js            숫자 1~10 획순
+    maze.js               미로 4개 (씨앗 난수로 생성 + 최단 경로 탐색)
+    dots.js               점 잇기 그림 5개
 assets/icon-*.png         tools/make-icons.mjs 로 생성 (직접 편집하지 말 것)
 tools/serve.mjs           개발용 정적 서버 (윈도우/맥 공통, LAN 주소 출력)
 tools/make-icons.mjs      아이콘 생성기 (외부 패키지 없이 PNG 직접 인코딩)
 tools/selftest.js         색칠하기 자가 점검 (브라우저 콘솔에 붙여넣기)
-tools/selftest-trace.js   따라 그리기 자가 점검 (진행 기록을 건드리지 않는다)
+tools/selftest-trace.js   따라 그리기류 5코스 자가 점검 (진행 기록을 건드리지 않는다)
 tools/pen-log.html        펜 입력 진단 — 앱 로직 없이 받은 좌표만 그대로 잇는다
 docs/기획.md              콘텐츠 로드맵 · UX 원칙 · 만드는 순서
 ```
@@ -63,13 +68,13 @@ await eval(await (await fetch('/tools/selftest.js')).text())
 
 붓 7종 · 물감통 · 되돌리기/다시하기 · 지우개 · 스티커 · 화면 크기 변경 재생을 확인한다.
 
-따라 그리기 화면에서:
+따라 그리기류(아무 코스나) 화면에서:
 
 ```js
 await eval(await (await fetch('/tools/selftest-trace.js')).text())
 ```
 
-12단계 완주 · 길 밖 판정 · 질러가기 방지 · 획순을 확인한다.
+5코스 55단계 완주 · 길 밖 판정 · 질러가기 방지 · 획순을 확인한다.
 판정은 엔진을 직접 불러 시험하므로 아이가 모은 별은 지워지지 않는다.
 
 둘 다 전부 `OK` 여야 한다.
@@ -116,22 +121,55 @@ for (const p of P.PAGES) {
 }
 ```
 
-## 따라 그리기 단계 추가하기
+## 따라 그리기류 — 단계·코스 추가하기
 
-`js/trace/paths.js` 의 `LEVELS` 에 넣는다. 좌표계는 밑그림과 같은 **1000×700**,
-작업 영역은 여백을 둬서 x 140~860 · y 130~570 안에서 논다.
+다섯 활동(선 긋기·한글·숫자·미로·점 잇기)이 화면 하나와 러너 하나를 공유한다.
+**HTML 도 CSS 도 건드릴 필요가 없다.**
+
+**단계 추가** — 해당 코스 파일(`lines.js` / `hangul.js` / …)의 배열에 넣는다.
+좌표계는 밑그림과 같은 **1000×700**, 작업 영역은 x 140~860 · y 130~570.
 
 ```js
 { id:'zig', name:'지그재그', ico:'⚡', from:'🐿️', to:'🌰',
   strokes:[ poly([[160,170],[276,530], ...]) ] }   // 또는 t => ({x,y}) 함수
 ```
 
-- `strokes` 가 여러 개면 **획순대로** 그려야 통과한다 (한글 획순이 이 기능을 쓴다).
+**코스 추가** — 새 파일을 만들고 `js/trace/index.js` 의 `COURSES` 에 한 줄,
+`js/main.js` 의 `ACTIVITIES`·`SCREEN_OF` 에 한 줄씩. 끝.
+
+```js
+COURSES = { ..., mycourse: { levels: MINE, guide: true, tol: 44, key: 'mycourseDone' } }
+```
+
+- `strokes` 가 여러 개면 **획순대로** 그려야 통과한다.
+- `guide:false` 면 길을 그려 주지 않는다. 미로(`level.walls`)와
+  점 잇기(`level.dots`)가 이걸 쓴다 — 길을 보여 주면 문제가 안 되니까.
 - `from`/`to` 는 출발점을 타고 가는 그림과 도착점에서 기다리는 그림.
   글자를 못 읽는 나이라 "무엇을 어디로" 를 그림으로만 알린다.
 - **경로가 자기 자신에게 가까워지면 `tol` 을 줄인다.** 안 그러면 옆 궤도로 건너뛴다.
-  기준: `tol` < 궤도 간격의 절반. 나선이 간격 105 라 `tol: 38` 이다.
-- 추가한 뒤 `tools/selftest-trace.js` 를 돌려 "완주 OK / 질러가기 OK" 를 확인한다.
+  기준: `tol` < 궤도 간격의 절반. 나선이 간격 105 라 `tol: 38`,
+  미로는 칸 크기의 0.42 로 자동 계산한다.
+- **`arc()` 의 각도 방향을 조심할 것.** y 가 아래로 커지므로 **각이 커지는 쪽이
+  화면상 시계 방향**이다. 반대로 주면 숫자 6 이 `ə` 가 되고 5 의 배가 사라진다.
+  새 글자를 넣었으면 아래 대조표로 눈으로 확인하는 게 제일 빠르다:
+
+```js
+const T = await import('/js/core/trace.js?t='+Date.now());
+const { NUMBERS } = await import('/js/trace/numbers.js?t='+Date.now());
+const cv = Object.assign(document.createElement('canvas'), {width:950,height:400});
+document.body.append(Object.assign(cv, {style:'position:fixed;left:0;top:0;z-index:9999;background:#fff'}));
+const c = cv.getContext('2d'); c.fillStyle='#fff'; c.fillRect(0,0,950,400);
+NUMBERS.forEach((L,i) => { const ox=(i%5)*190, oy=Math.floor(i/5)*190, s=0.166;
+  T.buildLevel(L).paths.forEach((p,k) => { c.beginPath();
+    p.forEach((q,j)=> j?c.lineTo(ox+12+q.x*s,oy+q.y*s):c.moveTo(ox+12+q.x*s,oy+q.y*s));
+    c.strokeStyle=['#e04a3a','#2b7fe8','#1a9e4b','#b054d8'][k%4];
+    c.lineWidth=9; c.lineCap='round'; c.lineJoin='round'; c.stroke(); }); });
+```
+
+- 추가한 뒤 `tools/selftest-trace.js` 를 돌려 "완주 OK / 질러가기 OK / 획순 OK" 를 확인한다.
+
+**한글 획순은 통용 필순을 따랐다** (초등 저학년 학습지 기준). 다르게 가르치고 싶으면
+`hangul.js` 의 `strokes` 순서만 바꾸면 된다.
 
 ## 함정 모음
 

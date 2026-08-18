@@ -72,6 +72,18 @@ export function poly(nodes) {
   };
 }
 
+/** 타원 호를 꺾은선 점으로 뽑는다. poly() 에 펼쳐 넣어 곡선을 섞는다
+    (숫자 2·3·6·8·9, 한글 ㅇ·ㅎ 이 이걸 쓴다).
+    각도는 라디안, y 가 아래로 커지므로 각이 커지면 시계 방향이다. */
+export function arc(cx, cy, rx, ry, a0, a1, n = 28) {
+  const out = [];
+  for (let i = 0; i <= n; i++) {
+    const a = a0 + (a1 - a0) * i / n;
+    out.push([cx + Math.cos(a) * rx, cy + Math.sin(a) * ry]);
+  }
+  return out;
+}
+
 /** 레벨 정의 → 판정·그리기에 쓸 점 배열로 굽는다 */
 export function buildLevel(level, spacing = 5) {
   return { ...level, paths: level.strokes.map(fn => sampleStroke(fn, spacing)) };

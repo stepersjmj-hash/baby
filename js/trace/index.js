@@ -1,14 +1,16 @@
 /* ============================================================
-   trace/index.js — 따라 그리기 (선 긋기 연습)
+   trace/index.js — 따라 그리기류 공용 러너
    ------------------------------------------------------------
-   판정은 전부 core/trace.js 가 한다. 여기는 보여 주기와 배선만.
+   선 긋기 · 한글 획순 · 숫자 쓰기 · 미로 · 점 잇기가 화면과 배선을
+   전부 공유한다. 판정은 core/trace.js, 내용은 각 코스 파일이 맡고
+   여기는 "보여 주기" 만 한다. 새 코스를 추가하려면 아래 COURSES 에
+   한 줄 넣으면 된다 — 화면도 HTML 도 건드릴 필요 없다.
 
-   레이어 4장 (CSS 로 겹쳐 두고 GPU 가 합성한다 — 색칠하기와 같은 원칙)
-     t-fx    ④ 출발/도착 그림, 칭찬 반짝이
+   레이어 4장 (CSS 로 겹쳐 두고 GPU 가 합성한다)
+     t-fx    ④ 출발/도착 그림, 획 번호, 점 번호, 칭찬 반짝이
      t-fill  ③ 지나온 길 (무지개로 채워진다)
-     t-guide ② 길 + 점선  ← 단계가 바뀔 때만 다시 그린다
-     t-ink   ① 아이가 실제로 그은 자국. 길 밖으로 나가야만 보인다
-             (길이 불투명해서 길 위에서는 ③ 이 덮는다)
+     t-guide ② 길 + 점선, 미로 벽, 점 잇기의 점  ← 단계가 바뀔 때만
+     t-ink   ① 아이가 실제로 그은 자국
 
    진행 채우기는 "새로 늘어난 구간만" 덧칠한다. 매번 경로 전체를 다시
    그리면 점이 수백 개라 펜을 움직일 때마다 느려진다.
@@ -16,14 +18,26 @@
 
 import { attachPen } from '../core/pen.js';
 import { VIEW, buildLevel, createTracer } from '../core/trace.js';
-import { LEVELS } from './paths.js';
 import { sfx } from '../core/audio.js';
+import { LINES } from './lines.js';
+import { HANGUL } from './hangul.js';
+import { NUMBERS } from './numbers.js';
+import { MAZES } from './maze.js';
+import { DOTS } from './dots.js';
+
+/* 코스 정의. guide:false 면 길을 그려 주지 않는다(미로·점 잇기). */
+const COURSES = {
+  trace:  { levels: LINES,   guide: true,  tol: 44, key: 'traceDone' },
+  hangul: { levels: HANGUL,  guide: true,  tol: 40, key: 'hangulDone', from: '✏️', to: '⭐' },
+  number: { levels: NUMBERS, guide: true,  tol: 40, key: 'numberDone', from: '✏️', to: '⭐' },
+  maze:   { levels: MAZES,   guide: false, tol: 40, key: 'mazeDone' },
+  dots:   { levels: DOTS,    guide: false, tol: 60, key: 'dotsDone' }
+};
 
 const DPR = Math.min(window.devicePixelRatio || 1, 2);
 const ROAD = 62;        // 길 너비 (1000×700 좌표 단위)
 const FILL = 44;        // 채워지는 선 너비
 const ICON = 62;        // 출발/도착 그림 크기
-const DONE_KEY = 'traceDone';
 
 const emoji = (ctx, ch, x, y, size) => {
   ctx.save();
@@ -34,7 +48,7 @@ const emoji = (ctx, ch, x, y, size) => {
   ctx.restore();
 };
 
-export function initTrace({ toast, goHome }) {
+export function initPractice({ toast, goHome }) {
   const $ = (id) => document.getElementById(id);
 
   const paper = $('trace-paper');
@@ -44,18 +58,18 @@ export function initTrace({ toast, goHome }) {
   const ictx = cInk.getContext('2d');
   const xctx = cFx.getContext('2d');
 
-  const built = LEVELS.map(L => buildLevel(L));
-  let done = new Set(JSON.parse(localStorage.getItem(DONE_KEY) || '[]'));
+  // 코스별로 한 번만 구워 둔다 (경로 리샘플링은 다시 할 이유가 없다)
+  const baked = {};
+  for (const [id, c] of Object.entries(COURSES)) baked[id] = c.levels.map(L => buildLevel(L));
+
+  let course = COURSES.trace, courseId = 'trace', built = baked.trace;
+  let done = new Set();
 
   let W = 0, H = 0, S = 1;              // S = 캔버스px / 1000×700 좌표 단위
-  let li = 0;                           // 지금 단계
-  let level = built[0];
-  let tracer = null;
+  let li = 0, level = built[0], tracer = null;
   let filled = [];                      // 획별로 어디까지 칠했는지
-  let drawing = false;
-  let party = null;                     // 칭찬 반짝이
-  let raf = 0, advanceTimer = 0;
-  let lastBeep = 0;
+  let drawing = false, party = null;
+  let raf = 0, advanceTimer = 0, lastBeep = 0;
 
   /* ── 레이아웃 ─────────────────────────────────────────── */
   function layout() {
@@ -82,16 +96,42 @@ export function initTrace({ toast, goHome }) {
     for (let j = from + 1; j <= to; j++) ctx.lineTo(pts[j].x * S, pts[j].y * S);
   }
 
-  /** 길 + 점선. 단계가 바뀌거나 화면 크기가 바뀔 때만 부른다 */
+  /** 배경(길·벽·점). 단계가 바뀌거나 화면 크기가 바뀔 때만 부른다 */
   function drawGuide() {
     gctx.clearRect(0, 0, W, H);
     gctx.lineCap = 'round'; gctx.lineJoin = 'round';
-    for (const p of level.paths) {
-      pathTo(gctx, p, 0, p.length - 1);
-      gctx.strokeStyle = '#f0e7d3'; gctx.lineWidth = ROAD * S; gctx.stroke();
-      gctx.setLineDash([7 * S, 17 * S]);
-      gctx.strokeStyle = '#cbb896'; gctx.lineWidth = 4 * S; gctx.stroke();
-      gctx.setLineDash([]);
+
+    if (level.walls) {                                  // 미로 벽
+      gctx.fillStyle = '#c9b189';
+      for (const [x, y, w, h] of level.walls) {
+        const r = Math.min(w, h) * 0.22 * S;
+        gctx.beginPath();
+        gctx.roundRect(x * S, y * S, w * S + 1, h * S + 1, r);
+        gctx.fill();
+      }
+    }
+
+    if (course.guide) {                                 // 따라갈 길 + 점선
+      for (const p of level.paths) {
+        pathTo(gctx, p, 0, p.length - 1);
+        gctx.strokeStyle = '#f0e7d3'; gctx.lineWidth = ROAD * S; gctx.stroke();
+        gctx.setLineDash([7 * S, 17 * S]);
+        gctx.strokeStyle = '#cbb896'; gctx.lineWidth = 4 * S; gctx.stroke();
+        gctx.setLineDash([]);
+      }
+    }
+
+    if (level.dots) {                                   // 점 잇기: 번호 붙은 점
+      level.dots.forEach(([x, y], i) => {
+        gctx.fillStyle = '#fff';
+        gctx.strokeStyle = '#c9a86a'; gctx.lineWidth = 3 * S;
+        gctx.beginPath(); gctx.arc(x * S, y * S, 26 * S, 0, 6.283);
+        gctx.fill(); gctx.stroke();
+        gctx.fillStyle = '#6b5c47';
+        gctx.font = `800 ${28 * S}px system-ui,sans-serif`;
+        gctx.textAlign = 'center'; gctx.textBaseline = 'middle';
+        gctx.fillText(String(i + 1), x * S, y * S + S);
+      });
     }
   }
 
@@ -120,14 +160,21 @@ export function initTrace({ toast, goHome }) {
     xctx.clearRect(0, 0, W, H);
     const si = Math.min(tracer.stroke, level.paths.length - 1);
     const p = level.paths[si];
-    const allDone = tracer.finished;
 
-    // 획이 여러 개면 획 번호를 붙인다 (한글 획순에서 그대로 쓸 표시)
+    // 획이 여러 개면 획 번호를 붙인다 (한글·숫자 획순의 핵심 안내).
+    // ㄷ·ㄹ·ㅌ·ㅅ·5 처럼 획의 시작점이 겹치는 글자가 있어서, 겹치면
+    // 그 획을 따라 조금 밀어 놓는다 — 번호가 포개지면 획순을 못 읽는다.
     if (level.paths.length > 1) {
+      const R = 17, placed = [];
       for (let i = 0; i < level.paths.length; i++) {
-        const a = level.paths[i][0];
+        const p2 = level.paths[i];
+        let k = 0;
+        while (k < p2.length - 1 &&
+               placed.some(b => Math.hypot(b.x - p2[k].x, b.y - p2[k].y) < R * 2.2)) k += 3;
+        const a = p2[k];
+        placed.push(a);
         xctx.fillStyle = i < tracer.stroke ? '#bda981' : '#ff8a3d';
-        xctx.beginPath(); xctx.arc(a.x * S, a.y * S, 17 * S, 0, 6.283); xctx.fill();
+        xctx.beginPath(); xctx.arc(a.x * S, a.y * S, R * S, 0, 6.283); xctx.fill();
         xctx.fillStyle = '#fff';
         xctx.font = `800 ${22 * S}px system-ui,sans-serif`;
         xctx.textAlign = 'center'; xctx.textBaseline = 'middle';
@@ -136,17 +183,17 @@ export function initTrace({ toast, goHome }) {
     }
 
     const goal = p[p.length - 1];
-    emoji(xctx, level.to, goal.x * S, goal.y * S, ICON * S);
+    emoji(xctx, level.to ?? course.to ?? '⭐', goal.x * S, goal.y * S, ICON * S);
 
-    if (!allDone) {
+    if (!tracer.finished) {
       const head = tracer.head();
-      // 아직 시작 안 했으면 출발점을 살짝 두근거리게 (글자 없이 "여기서 시작" 을 알린다)
+      // 아직 시작 안 했으면 출발점을 살짝 두근거리게 (글자 없이 "여기서 시작")
       if (tracer.index === 0) {
         const pulse = 1 + Math.sin(now / 260) * 0.12;
         xctx.strokeStyle = '#3fb950'; xctx.lineWidth = 5 * S;
         xctx.beginPath(); xctx.arc(head.x * S, head.y * S, 44 * S * pulse, 0, 6.283); xctx.stroke();
       }
-      emoji(xctx, level.from, head.x * S, head.y * S, ICON * S);
+      emoji(xctx, level.from ?? course.from ?? '✏️', head.x * S, head.y * S, ICON * S);
     }
 
     if (party) {
@@ -224,7 +271,7 @@ export function initTrace({ toast, goHome }) {
   function finish() {
     if (!done.has(level.id)) {
       done.add(level.id);
-      localStorage.setItem(DONE_KEY, JSON.stringify([...done]));
+      localStorage.setItem(course.key, JSON.stringify([...done]));
       buildStrip();
     }
     ictx.clearRect(0, 0, W, H);
@@ -243,7 +290,7 @@ export function initTrace({ toast, goHome }) {
   attachPen(paper, {
     getSize: () => [W, H],
     onStart: (pt) => {
-      if (tracer.finished) return;
+      if (!tracer || tracer.finished) return;
       drawing = true;
       ictx.clearRect(0, 0, W, H);                     // 시도할 때마다 자국은 새로
       inkPrev = pt;
@@ -274,10 +321,10 @@ export function initTrace({ toast, goHome }) {
     clearTimeout(advanceTimer);
     li = Math.max(0, Math.min(built.length - 1, i));
     level = built[li];
-    tracer = createTracer(level.paths, { tol: level.tol ?? 44 });
+    tracer = createTracer(level.paths, { tol: level.tol ?? course.tol });
     party = null;
     drawing = false;
-    localStorage.setItem('traceLevel', level.id);
+    localStorage.setItem(course.key + ':at', level.id);
     $('trace-name').textContent = level.name;
     $('btn-trace-prev').disabled = li === 0;
     $('btn-trace-next').disabled = li === built.length - 1;
@@ -320,15 +367,21 @@ export function initTrace({ toast, goHome }) {
   window.addEventListener('orientationchange', () => setTimeout(layout, 250));
 
   return {
-    /** 따라 그리기 화면을 열 때 호출 */
-    enter() {
+    /** @param id COURSES 의 키 (trace / hangul / number / maze / dots) */
+    enter(id) {
+      courseId = id in COURSES ? id : 'trace';
+      course = COURSES[courseId];
+      built = baked[courseId];
+      done = new Set(JSON.parse(localStorage.getItem(course.key) || '[]'));
+
       // 마지막에 하던 단계로 돌아간다. 그게 이미 끝난 단계면 아직 안 한 곳으로.
-      const last = localStorage.getItem('traceLevel');
+      const last = localStorage.getItem(course.key + ':at');
       let i = Math.max(0, built.findIndex(L => L.id === last));
       if (done.has(built[i].id)) {
         const next = built.findIndex(L => !done.has(L.id));
         if (next >= 0) i = next;
       }
+      level = built[i];
       buildStrip();
       openLevel(i);
       layout();
