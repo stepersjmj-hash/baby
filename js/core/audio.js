@@ -44,5 +44,8 @@ export const sfx = {
   undo:   () => tone(340, 0.10, 'square', 0.06),
   sticker:() => { tone(880, 0.06, 'triangle', 0.10); tone(1320, 0.08, 'triangle', 0.08, 0.04); },
   save:   () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.20, 'sine', 0.11, i * 0.09)),
+  // 따라 그리기: 진행할수록 음이 올라간다. "잘 가고 있어" 를 소리로 알린다
+  step:   (r = 0) => tone(480 + 620 * Math.min(1, Math.max(0, r)), 0.05, 'triangle', 0.05),
+  cheer:  () => [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.22, 'triangle', 0.10, i * 0.07)),
   clear:  () => { tone(420, 0.18, 'sawtooth', 0.05); tone(210, 0.26, 'sine', 0.08, 0.08); }
 };

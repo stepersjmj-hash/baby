@@ -3,6 +3,7 @@
    ============================================================ */
 
 import { initColoring } from './coloring/index.js';
+import { initTrace } from './trace/index.js';
 import { unlock, sfx } from './core/audio.js';
 import { works } from './core/store.js';
 
@@ -12,7 +13,7 @@ const $ = (id) => document.getElementById(id);
    ready:false 는 "곧 나와요" 카드로 보인다. */
 const ACTIVITIES = [
   { id: 'coloring', emoji: '🎨', name: '색칠하기',   desc: '펜으로 자유롭게', ready: true },
-  { id: 'trace',    emoji: '✏️', name: '따라 그리기', desc: '점선 따라 쓱쓱' },
+  { id: 'trace',    emoji: '✏️', name: '따라 그리기', desc: '점선 따라 쓱쓱', ready: true },
   { id: 'hangul',   emoji: '🇰🇷', name: '한글 쓰기',   desc: 'ㄱ ㄴ ㄷ 획순' },
   { id: 'number',   emoji: '🔢', name: '숫자 쓰기',   desc: '1부터 10까지' },
   { id: 'maze',     emoji: '🌀', name: '미로 찾기',   desc: '길을 그어 탈출' },
@@ -55,8 +56,8 @@ function buildHome() {
     card.addEventListener('click', () => {
       if (!a.ready) { toast('아직 준비 중이에요 🙂'); return; }
       sfx.tap();
-      show('coloring');
-      coloring.enter();
+      show(a.id);
+      ACTIVITY_APPS[a.id].enter();
     });
     grid.appendChild(card);
   }
@@ -109,7 +110,11 @@ async function shareBlob(blob) {
 }
 
 /* ── 시작 ────────────────────────────────────────────────── */
-const coloring = initColoring({ toast, goHome: () => { show('home'); } });
+const goHome = () => show('home');
+const ACTIVITY_APPS = {
+  coloring: initColoring({ toast, goHome }),
+  trace:    initTrace({ toast, goHome })
+};
 
 buildHome();
 $('btn-gallery').addEventListener('click', () => { sfx.tap(); show('gallery'); buildGallery(); });

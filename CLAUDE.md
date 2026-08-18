@@ -1,14 +1,15 @@
 # CLAUDE.md — 아이놀이
 
 3~6세 아이용 아이패드 학습놀이 웹앱(PWA). 애플펜슬 입력이 중심이다.
-현재 구현된 콘텐츠는 **색칠하기** 하나이고, 나머지 로드맵은 [docs/기획.md](docs/기획.md)에 있다.
+현재 구현된 콘텐츠는 **색칠하기**와 **따라 그리기** 둘이고, 나머지 로드맵은
+[docs/기획.md](docs/기획.md)에 있다.
 
 빌드 도구·의존성 없음. 순수 ES 모듈 + 캔버스. 정적 서버로 그냥 띄우면 된다.
 
 ## 파일 구성
 
 ```
-index.html                앱 셸(홈 / 색칠 / 갤러리 세 화면이 한 문서 안에)
+index.html                앱 셸(홈 / 색칠 / 따라 그리기 / 갤러리 가 한 문서 안에)
 css/app.css               전부. 터치 타겟은 --tap 변수로 통일
 manifest.webmanifest      홈 화면 추가용
 sw.js                     오프라인 캐시 (네트워크 우선)
@@ -18,15 +19,20 @@ js/
     pen.js                애플펜슬/손가락 입력 정규화, 손바닥 인식, 시드 난수
     audio.js              WebAudio 로 효과음 합성 (음원 파일 없음)
     store.js              IndexedDB — works(완성작) / drafts(그리다 만 그림)
+    trace.js              궤적 판정 엔진 — 따라 그리기·한글 획순·숫자·점 잇기 공용
   coloring/
     index.js              색칠 엔진: 레이어, 획 기록, 되돌리기, UI 배선
     brushes.js            붓 종류별 그리기 로직
     fill.js               물감통(플러드 필)
     pages.js              밑그림 8종
+  trace/
+    index.js              따라 그리기: 길 그리기, 진행 채우기, 칭찬, UI 배선
+    paths.js              선 긋기 코스 12단계 (경로 정의만)
 assets/icon-*.png         tools/make-icons.mjs 로 생성 (직접 편집하지 말 것)
 tools/serve.mjs           개발용 정적 서버 (윈도우/맥 공통, LAN 주소 출력)
 tools/make-icons.mjs      아이콘 생성기 (외부 패키지 없이 PNG 직접 인코딩)
-tools/selftest.js         브라우저 콘솔에 붙여넣는 자가 점검
+tools/selftest.js         색칠하기 자가 점검 (브라우저 콘솔에 붙여넣기)
+tools/selftest-trace.js   따라 그리기 자가 점검 (진행 기록을 건드리지 않는다)
 tools/pen-log.html        펜 입력 진단 — 앱 로직 없이 받은 좌표만 그대로 잇는다
 docs/기획.md              콘텐츠 로드맵 · UX 원칙 · 만드는 순서
 ```
@@ -49,14 +55,24 @@ node tools/serve.mjs
 
 ## 자가 점검
 
-브라우저 콘솔에서:
+브라우저 콘솔에서. 색칠 화면에서:
 
 ```js
 await eval(await (await fetch('/tools/selftest.js')).text())
 ```
 
 붓 7종 · 물감통 · 되돌리기/다시하기 · 지우개 · 스티커 · 화면 크기 변경 재생을 확인한다.
-전부 `OK` 여야 한다.
+
+따라 그리기 화면에서:
+
+```js
+await eval(await (await fetch('/tools/selftest-trace.js')).text())
+```
+
+12단계 완주 · 길 밖 판정 · 질러가기 방지 · 획순을 확인한다.
+판정은 엔진을 직접 불러 시험하므로 아이가 모은 별은 지워지지 않는다.
+
+둘 다 전부 `OK` 여야 한다.
 
 ## 아키텍처에서 지킬 것
 
@@ -99,6 +115,23 @@ for (const p of P.PAGES) {
   console.log(p.id, ((W*H-bg-ink)/(W*H)*100).toFixed(1)+'%');  // 4% 미만이면 샌다
 }
 ```
+
+## 따라 그리기 단계 추가하기
+
+`js/trace/paths.js` 의 `LEVELS` 에 넣는다. 좌표계는 밑그림과 같은 **1000×700**,
+작업 영역은 여백을 둬서 x 140~860 · y 130~570 안에서 논다.
+
+```js
+{ id:'zig', name:'지그재그', ico:'⚡', from:'🐿️', to:'🌰',
+  strokes:[ poly([[160,170],[276,530], ...]) ] }   // 또는 t => ({x,y}) 함수
+```
+
+- `strokes` 가 여러 개면 **획순대로** 그려야 통과한다 (한글 획순이 이 기능을 쓴다).
+- `from`/`to` 는 출발점을 타고 가는 그림과 도착점에서 기다리는 그림.
+  글자를 못 읽는 나이라 "무엇을 어디로" 를 그림으로만 알린다.
+- **경로가 자기 자신에게 가까워지면 `tol` 을 줄인다.** 안 그러면 옆 궤도로 건너뛴다.
+  기준: `tol` < 궤도 간격의 절반. 나선이 간격 105 라 `tol: 38` 이다.
+- 추가한 뒤 `tools/selftest-trace.js` 를 돌려 "완주 OK / 질러가기 OK" 를 확인한다.
 
 ## 함정 모음
 

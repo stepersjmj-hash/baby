@@ -85,6 +85,35 @@
   </div>
 </section>
 
+<!-- ───────────────────────── 따라 그리기 ───────────────────────── -->
+<section id="screen-trace" class="screen">
+
+  <!-- 단계 고르기 -->
+  <div class="tray tray-top">
+    <div class="tools" id="trace-strip"></div>
+  </div>
+
+  <!-- 연습판 -->
+  <div class="stage" id="trace-stage">
+    <div class="paper" id="trace-paper">
+      <canvas id="t-ink"></canvas>
+      <canvas id="t-guide"></canvas>
+      <canvas id="t-fill"></canvas>
+      <canvas id="t-fx"></canvas>
+      <div class="paper-rings" aria-hidden="true"></div>
+    </div>
+  </div>
+
+  <div class="tray tray-bottom">
+    <button class="rbtn" id="btn-trace-home" type="button"><span>🏠</span></button>
+    <button class="rbtn" id="btn-trace-again" type="button"><span>↩️</span></button>
+    <div class="spacer"></div>
+    <button class="rbtn" id="btn-trace-prev" type="button"><span>◀</span></button>
+    <span class="lvl-name" id="trace-name"></span>
+    <button class="rbtn" id="btn-trace-next" type="button"><span>▶</span></button>
+  </div>
+</section>
+
 <!-- ───────────────────────── 갤러리 ───────────────────────── -->
 <section id="screen-gallery" class="screen">
   <header class="home-head">
