@@ -11,6 +11,22 @@ import { works } from './core/store.js';
 
 const $ = (id) => document.getElementById(id);
 
+/* iPadOS 16.3 이하에는 canvas 의 roundRect 가 없다. 미로 벽·퍼즐 판·
+   다른 그림 찾기 판이 이걸 쓰는데, 없으면 그리다 예외가 나서 화면이
+   통째로 빈다 (증상: "퍼즐에서 그림이 안 나와"). 없을 때만 채워 넣는다. */
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r = 0) {
+    r = Math.max(0, Math.min(Array.isArray(r) ? r[0] : r, w / 2, h / 2));
+    this.moveTo(x + r, y);
+    this.arcTo(x + w, y, x + w, y + h, r);
+    this.arcTo(x + w, y + h, x, y + h, r);
+    this.arcTo(x, y + h, x, y, r);
+    this.arcTo(x, y, x + w, y, r);
+    this.closePath();
+    return this;
+  };
+}
+
 /* 홈 화면 목록 = 그대로 콘텐츠 로드맵.
    ready:false 는 "곧 나와요" 카드로 보인다. */
 const ACTIVITIES = [
