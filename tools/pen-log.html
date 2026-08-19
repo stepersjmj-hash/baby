@@ -48,6 +48,7 @@
     <button id="b-tts">🗣️ 바로 읽기</button>
     <button id="b-tts2">🕐 1초 뒤 읽기</button>
     <button id="b-tts3">🎵 효과음+읽기</button>
+    <button id="b-tts4">📱 앱 경로로 읽기</button>
     <span id="tts-stat" style="font-weight:800">읽기 시험 대기</span>
     <span id="hint">한 번에, 펜을 떼지 말고 길게 그어 보세요</span>
     <span id="ver" style="font-weight:800"></span>
@@ -203,15 +204,16 @@ $('b-log').addEventListener('click', () => { logEl.hidden = !logEl.hidden; if (!
 (async () => {
   const el = $('ver');
   try {
-    const [css, js] = await Promise.all([
-      fetch('../css/app.css').then(r => r.text()),
-      fetch('../js/coloring/index.js').then(r => r.text())
+    const [sw, au] = await Promise.all([
+      fetch('../sw.js?t=' + Date.now()).then(r => r.text()),
+      fetch('../js/core/audio.js?t=' + Date.now()).then(r => r.text())
     ]);
-    const ok = css.includes('[hidden]') && /\.stage\{[^}]*touch-action:none/s.test(css.replace(/\s+/g, ''))
-               && js.includes('resumeFrom');
-    el.textContent = ok ? '앱 최신 ✓' : '앱이 옛 캐시 ✗ (아이콘 지우고 다시 추가)';
-    el.style.color = ok ? '#1a7f37' : '#d92b2b';
-  } catch { el.textContent = ''; }
+    const ver = sw.match(/VERSION = '([^']+)'/)?.[1] ?? '?';
+    const fresh = au.includes('resume + speak');          // 최신 say() 표식
+    const mute = localStorage.getItem('sfx') === 'off';
+    el.textContent = `서버 ${ver}${fresh ? '' : '(옛 코드?)'} · 음소거 ${mute ? '🔇 켜짐!' : '꺼짐(정상)'}`;
+    el.style.color = (!fresh || mute) ? '#d92b2b' : '#1a7f37';
+  } catch { el.textContent = '버전 확인 실패'; }
 })();
 
 /* ── 읽기(TTS) 시험 ──────────────────────────────────────
@@ -259,6 +261,21 @@ $('b-log').addEventListener('click', () => { logEl.hidden = !logEl.hidden; if (!
     });
     stat('팡파르… 0.55초 뒤 읽기');
     setTimeout(() => trySpeak('효과음+'), 550);
+  });
+
+  // 앱이 쓰는 진짜 모듈(say)을 그대로 불러 읽는다.
+  // 위 시험들은 되는데 이것만 안 되면 앱 코드 문제, 이것도 되면
+  // 아이패드의 앱이 옛 캐시를 돌리고 있는 것이다.
+  $('b-tts4').addEventListener('click', async () => {
+    try {
+      const A = await import('../js/core/audio.js?t=' + Date.now());
+      A.unlock();
+      if (A.isMuted()) { stat('앱 경로: 음소거 🔇 상태라 안 읽음! (홈의 🔊 를 누를 것)'); return; }
+      stat('앱 경로: say("기역") 호출함 — 소리가 나는지 들어 보세요');
+      A.say('기역');
+      setTimeout(() => A.say('사십'), 1600);
+      setTimeout(() => A.say('B', 'en-US'), 3200);
+    } catch (e) { stat('앱 경로: 불러오기 실패 ' + e.message); }
   });
 })();
 
