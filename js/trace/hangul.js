@@ -13,6 +13,14 @@ import { poly, arc } from '../core/trace.js';
 
 const O = (cx, cy, r) => poly(arc(cx, cy, r, r, -Math.PI / 2, Math.PI * 1.5, 40));  // 동그라미
 
+/* 다 쓰면 읽어 줄 이름. 자음은 이름(기역), 모음은 소리(아) */
+const SAY = {
+  g: '기역', n: '니은', d: '디귿', r: '리을', m: '미음', b: '비읍', s: '시옷',
+  ng: '이응', j: '지읒', ch: '치읓', k: '키읔', t: '티읕', p: '피읖', h: '히읗',
+  a: '아', ya: '야', eo: '어', yeo: '여', o: '오', yo: '요',
+  u: '우', yu: '유', eu: '으', i: '이'
+};
+
 export const HANGUL = [
   /* ── 자음 14 ── */
   { id: 'g',  name: 'ㄱ', strokes: [poly([[270, 180], [730, 180], [730, 530]])] },
@@ -75,4 +83,4 @@ export const HANGUL = [
                                     poly([[610, 290], [610, 530]])] },
   { id: 'eu', name: 'ㅡ', strokes: [poly([[250, 355], [750, 355]])] },
   { id: 'i',  name: 'ㅣ', strokes: [poly([[500, 130], [500, 580]])] }
-].map(L => ({ ...L, ico: L.name }));
+].map(L => ({ ...L, ico: L.name, say: SAY[L.id] }));

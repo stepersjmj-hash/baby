@@ -194,6 +194,22 @@ const CHEER = {
                   seq([880, 1109, 1319, 1760], .26, 'triangle', .09, .07); }
 };
 
+/* ── 읽어 주기 ────────────────────────────────────────────
+   글자·숫자를 다 쓰면 이름을 읽어 준다. 음원 파일 없이 기기 내장
+   TTS(speechSynthesis)를 쓴다 — iOS 에 한국어·영어 목소리가 있다.
+   음소거(🔊)를 켜면 이것도 조용해진다. */
+export function say(text, lang = 'ko-KR') {
+  if (muted || !('speechSynthesis' in window)) return;
+  try {
+    speechSynthesis.cancel();                  // 빨리 넘길 때 겹쳐 읽지 않게
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = lang;
+    u.rate = 0.85;                             // 아이가 따라 말할 수 있게 천천히
+    u.pitch = 1.05;
+    speechSynthesis.speak(u);
+  } catch { /* 목소리가 없는 기기면 조용히 넘어간다 */ }
+}
+
 export const sfx = {
   tap:     () => tone(660, 0.07, 'triangle', 0.10),
   undo:    () => tone(340, 0.10, 'square', 0.06),

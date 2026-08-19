@@ -18,7 +18,7 @@
 
 import { attachPen } from '../core/pen.js';
 import { VIEW, buildLevel, createTracer } from '../core/trace.js';
-import { sfx, voice } from '../core/audio.js';
+import { sfx, voice, say } from '../core/audio.js';
 import { LINES } from './lines.js';
 import { HANGUL } from './hangul.js';
 import { NUMBERS } from './numbers.js';
@@ -30,11 +30,11 @@ import { DOTS } from './dots.js';
 const COURSES = {
   trace:  { levels: LINES,   guide: true,  tol: 44, key: 'traceDone',  voice: 'slide' },
   hangul: { levels: HANGUL,  guide: true,  tol: 40, key: 'hangulDone', voice: 'write',
-            from: '✏️', to: '⭐' },
+            from: '✏️', to: '⭐', lang: 'ko-KR' },
   number: { levels: NUMBERS, guide: true,  tol: 40, key: 'numberDone', voice: 'write',
-            from: '✏️', to: '⭐' },
+            from: '✏️', to: '⭐', lang: 'ko-KR' },
   english:{ levels: ENGLISH, guide: true,  tol: 40, key: 'englishDone', voice: 'write',
-            from: '✏️', to: '⭐' },
+            from: '✏️', to: '⭐', lang: 'en-US' },
   maze:   { levels: MAZES,   guide: false, tol: 40, key: 'mazeDone',   voice: 'scurry' },
   dots:   { levels: DOTS,    guide: false, tol: 60, key: 'dotsDone',   voice: null }
 };
@@ -303,6 +303,8 @@ export function initPractice({ toast, goHome }) {
     ictx.clearRect(0, 0, W, H);
     vox?.stop(); vox = null;          // 쓰는 소리를 끄고 팡파르만 들리게
     sfx.cheer(courseId);
+    // 글자·숫자 코스는 팡파르가 잦아들 때쯤 이름을 읽어 준다 (ㄱ→"기역", A→"에이", 7→"칠")
+    if (course.lang) setTimeout(() => say(level.say ?? level.name, course.lang), 550);
     celebrate();
     toast('잘했어요! 🎉');
     clearTimeout(advanceTimer);
