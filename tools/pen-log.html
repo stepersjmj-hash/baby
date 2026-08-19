@@ -264,18 +264,19 @@ $('b-log').addEventListener('click', () => { logEl.hidden = !logEl.hidden; if (!
   });
 
   // 앱이 쓰는 진짜 모듈(say)을 그대로 불러 읽는다.
-  // 위 시험들은 되는데 이것만 안 되면 앱 코드 문제, 이것도 되면
-  // 아이패드의 앱이 옛 캐시를 돌리고 있는 것이다.
-  $('b-tts4').addEventListener('click', async () => {
-    try {
-      const A = await import('../js/core/audio.js?t=' + Date.now());
-      A.unlock();
-      if (A.isMuted()) { stat('앱 경로: 음소거 🔇 상태라 안 읽음! (홈의 🔊 를 누를 것)'); return; }
-      stat('앱 경로: say("기역") 호출함 — 소리가 나는지 들어 보세요');
-      A.say('기역');
-      setTimeout(() => A.say('사십'), 1600);
-      setTimeout(() => A.say('B', 'en-US'), 3200);
-    } catch (e) { stat('앱 경로: 불러오기 실패 ' + e.message); }
+  // 미리 불러 두는 이유: 버튼 안에서 import 를 기다리면 speak 이
+  // 제스처 밖으로 밀려나 iOS 의 첫-speak 잠금에 걸린다 — 그게 바로
+  // 이 페이지로 잡아낸 버그다. 클릭 시점엔 동기로만 부른다.
+  let appAudio = null;
+  import('../js/core/audio.js?t=' + Date.now()).then(A => { appAudio = A; }).catch(() => {});
+  $('b-tts4').addEventListener('click', () => {
+    if (!appAudio) { stat('앱 경로: 모듈 로딩 중 — 한 번 더 누르세요'); return; }
+    appAudio.unlock();
+    if (appAudio.isMuted()) { stat('앱 경로: 음소거 🔇 상태라 안 읽음! (홈의 🔊 를 누를 것)'); return; }
+    stat('앱 경로: say("기역") 호출함 — 소리가 나는지 들어 보세요');
+    appAudio.say('기역');
+    setTimeout(() => appAudio.say('사십'), 1600);
+    setTimeout(() => appAudio.say('B', 'en-US'), 3200);
   });
 })();
 
