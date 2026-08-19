@@ -412,6 +412,12 @@ export function initPractice({ toast, goHome }) {
     });
   }
 
+  // 아래 이름표를 누르면 읽어 준다 — 아이가 듣고 싶을 때 다시 듣는 용도이자,
+  // 터치 안에서 도는 가장 확실한 TTS 경로다
+  $('trace-name').addEventListener('click', () => {
+    if (course.lang) say(level.say ?? level.name, course.lang);
+  });
+
   $('btn-trace-home').addEventListener('click', () => { clearTimeout(advanceTimer); goHome(); });
   $('btn-trace-again').addEventListener('click', again);
   $('btn-trace-prev').addEventListener('click', () => { sfx.tap(); openLevel(li - 1); });

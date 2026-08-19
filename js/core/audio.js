@@ -200,32 +200,19 @@ const CHEER = {
    음소거(🔊)를 켜면 이것도 조용해진다. */
 let lastUtter = null;      // iOS 는 utterance 를 붙잡아 두지 않으면 GC 돼서 소리가 안 난다
 
+/* 아이패드에서 안 읽히는 문제를 쫓으며 배운 것: 꾸미지 말 것.
+   cancel·rate·pitch·suspend 같은 손질이 하나씩 iOS 의 함정을 밟았다.
+   (suspend 는 오디오 세션을 끊어 TTS 까지 죽이고, cancel 직후 speak 는
+   삼켜지고, 빈 발화 잠금 해제는 큐를 어지럽혔다.)
+   진단 페이지에서 검증된 "resume + speak" 그대로만 쓴다. */
 export function say(text, lang = 'ko-KR') {
   if (muted || !('speechSynthesis' in window)) return;
   try {
-    const synth = speechSynthesis;
     const u = new SpeechSynthesisUtterance(text);
     u.lang = lang;
-    u.rate = 0.85;                             // 아이가 따라 말할 수 있게 천천히
-    u.pitch = 1.05;
     lastUtter = u;
-
-    // iOS 는 WebAudio 컨텍스트가 돌고 있으면 TTS 를 무음/아주 작게 내는
-    // 일이 있다 — 읽는 동안 효과음을 잠깐 재우고 끝나면 다시 켠다.
-    let woke = false;
-    const wake = () => {
-      if (woke) return;
-      woke = true;
-      if (ctx && ctx.state === 'suspended') ctx.resume();
-    };
-    u.onend = wake; u.onerror = wake;
-    setTimeout(wake, 4000);                    // 행여 이벤트를 놓쳐도 다시 켠다
-    if (ctx && ctx.state === 'running') ctx.suspend();
-
-    const kick = () => { try { synth.resume(); synth.speak(u); } catch { wake(); } };
-    // cancel() 직후의 speak 는 iOS 가 삼키는 일이 있다 — 넉넉히 띄운다
-    if (synth.speaking || synth.pending) { synth.cancel(); setTimeout(kick, 180); }
-    else kick();
+    speechSynthesis.resume();
+    speechSynthesis.speak(u);
   } catch { /* 목소리가 없는 기기면 조용히 넘어간다 */ }
 }
 
