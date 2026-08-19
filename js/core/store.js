@@ -1,11 +1,12 @@
 /* ============================================================
    store.js — IndexedDB 저장소
      works   : 갤러리에 저장한 완성작 (Blob)
+     photos  : 퍼즐로 만들 내 사진 (줄여서 저장한 JPEG Blob)
      drafts  : 그리다 만 그림. 페이지별 1개, 앱을 껐다 켜도 이어서 색칠
    ============================================================ */
 
 const DB = 'ainori';
-const VER = 1;
+const VER = 2;          // v2: photos(퍼즐용 내 사진) 추가
 let dbp = null;
 
 function open() {
@@ -18,6 +19,8 @@ function open() {
         db.createObjectStore('works', { keyPath: 'id', autoIncrement: true });
       if (!db.objectStoreNames.contains('drafts'))
         db.createObjectStore('drafts', { keyPath: 'pageId' });
+      if (!db.objectStoreNames.contains('photos'))
+        db.createObjectStore('photos', { keyPath: 'id', autoIncrement: true });
     };
     rq.onsuccess = () => res(rq.result);
     rq.onerror = () => rej(rq.error);
@@ -41,6 +44,12 @@ export const works = {
   add:  (blob, pageId) => tx('works', 'readwrite', s => s.add({ blob, pageId, at: Date.now() })),
   all:  () => tx('works', 'readonly', s => s.getAll()),
   del:  (id) => tx('works', 'readwrite', s => s.delete(id))
+};
+
+export const photos = {
+  add: (blob) => tx('photos', 'readwrite', s => s.add({ blob, at: Date.now() })),
+  all: () => tx('photos', 'readonly', s => s.getAll()),
+  del: (id) => tx('photos', 'readwrite', s => s.delete(id))
 };
 
 export const drafts = {

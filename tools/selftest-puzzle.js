@@ -20,30 +20,39 @@
     log.push(`구성: ${PICS.length}문제 (하${byHard[1]} 중${byHard[2]} 상${byHard[3]}) ${ok ? 'OK' : 'FAIL'}`);
   }
 
-  // 2) 난이도별: 조각 수 · 빈틈없이 덮기 · 혹/홈 짝 · 결정성 · 흩은 자리
+  // 2) 난이도별: 조각 수 · 빈틈없이 덮기 · 혹/홈 짝 · 결정성 · 흩은 자리.
+  //    자르기가 무작위이므로 문제마다 씨앗 세 개로 돌려 본다.
   for (const hard of [1, 2, 3]) {
     const bad = [];
     for (const L of PICS.filter(x => x.hard === hard)) {
-      const pcs = buildPuzzle(L, L.seed);
-      if (pcs.length !== want[hard]) bad.push(`${L.id}:조각 ${pcs.length}`);
-      const area = pcs.reduce((s, p) => s + p.rect.w * p.rect.h, 0);
-      if (Math.abs(area - PIC.w * PIC.h) > 1) bad.push(L.id + ':면적');
-      // 맞닿은 변마다 혹 하나 + 홈 하나
-      const seen = new Map();
-      for (const p of pcs) for (const g of p.segs) {
-        if (!g.knob) continue;
-        const k = [Math.min(g.x1, g.x2), Math.min(g.y1, g.y2),
-                   Math.max(g.x1, g.x2), Math.max(g.y1, g.y2)].map(v => Math.round(v * 10)).join(',');
-        seen.set(k, (seen.get(k) || []).concat(g.knob));
+      for (const seed of [1, 2, 3]) {
+        const pcs = buildPuzzle(L, seed);
+        if (pcs.length !== want[hard]) bad.push(`${L.id}:조각 ${pcs.length}`);
+        const area = pcs.reduce((s, p) => s + p.rect.w * p.rect.h, 0);
+        if (Math.abs(area - PIC.w * PIC.h) > 1) bad.push(L.id + ':면적');
+        // 맞닿은 변마다 혹 하나 + 홈 하나 (짧아서 혹을 생략한 변은 양쪽 다 0)
+        const seen = new Map();
+        for (const p of pcs) for (const g of p.segs) {
+          if (!g.knob) continue;
+          const k = [Math.min(g.x1, g.x2), Math.min(g.y1, g.y2),
+                     Math.max(g.x1, g.x2), Math.max(g.y1, g.y2)].map(v => Math.round(v * 10)).join(',');
+          seen.set(k, (seen.get(k) || []).concat(g.knob));
+        }
+        for (const v of seen.values())
+          if (!(v.length === 2 && v[0] + v[1] === 0)) bad.push(L.id + ':혹홈');
+        if (JSON.stringify(pcs) !== JSON.stringify(buildPuzzle(L, seed))) bad.push(L.id + ':비결정적');
+        for (const p of pcs) {
+          if (p.pos.x - p.rect.w / 2 < PIC.x + PIC.w) bad.push(L.id + ':판 위에 흩어짐');
+          if (p.pos.x > VIEW.w || p.pos.y > VIEW.h) bad.push(L.id + ':화면 밖');
+          if (Math.hypot(p.pos.x - p.home.x, p.pos.y - p.home.y) <= SNAP) bad.push(L.id + ':이미 붙음');
+        }
       }
-      for (const v of seen.values())
-        if (!(v.length === 2 && v[0] + v[1] === 0)) bad.push(L.id + ':혹홈');
-      if (JSON.stringify(pcs) !== JSON.stringify(buildPuzzle(L, L.seed))) bad.push(L.id + ':비결정적');
-      for (const p of pcs) {
-        if (p.pos.x - p.rect.w / 2 < PIC.x + PIC.w) bad.push(L.id + ':판 위에 흩어짐');
-        if (p.pos.x > VIEW.w || p.pos.y > VIEW.h) bad.push(L.id + ':화면 밖');
-        if (Math.hypot(p.pos.x - p.home.x, p.pos.y - p.home.y) <= SNAP) bad.push(L.id + ':이미 붙음');
-      }
+      // 씨앗이 다르면 다르게 잘려야 한다 (매번 다른 퍼즐)
+      if (JSON.stringify(buildPuzzle(L, 1).map(p => p.rect)) ===
+          JSON.stringify(buildPuzzle(L, 2).map(p => p.rect)) &&
+          JSON.stringify(buildPuzzle(L, 1).map(p => p.rect)) ===
+          JSON.stringify(buildPuzzle(L, 3).map(p => p.rect)))
+        bad.push(L.id + ':안 바뀜');
     }
     log.push(`${HARD[hard]} 10문제 (${want[hard]}조각): ${bad.length ? 'FAIL → ' + [...new Set(bad)].slice(0, 3).join(' ') : 'OK'}`);
   }
@@ -52,7 +61,7 @@
   {
     const bad = [];
     for (const L of [PICS[0], PICS[10], PICS[20]]) {
-      const pcs = buildPuzzle(L, L.seed);
+      const pcs = buildPuzzle(L, 5);
       for (const p of pcs) {
         if (Math.hypot(SNAP - 4, 0) > SNAP) bad.push('판정식');
         // 제자리에서 SNAP-4 만큼 벗어나도 붙어야 한다
@@ -69,12 +78,19 @@
     log.push(`붙기 판정:       ${bad.length ? 'FAIL → ' + [...new Set(bad)].slice(0, 3).join(' ') : 'OK'}`);
   }
 
-  // 4) 화면
+  // 4) 내 사진 저장소 (읽기만 — 사진은 건드리지 않는다)
+  try {
+    const { photos } = await import('/js/core/store.js' + q);
+    const n = (await photos.all()).length;
+    log.push(`내 사진: ${n}장 → 사진 단계 ${n * 3}개`);
+  } catch { log.push('내 사진: 저장소를 못 열었다 (기본 그림만)'); }
+
+  // 5) 화면 — 칩 = 기본 30 + 사진×3 + 사진 추가 버튼
   const strip = document.getElementById('puzzle-strip');
   const cv = document.getElementById('p-board');
   const on = document.getElementById('screen-puzzle')?.classList.contains('is-active');
   log.push(`화면: 칩 ${strip?.children.length ?? 0}개 · 캔버스 ${cv?.width}×${cv?.height} ` +
-           (on ? ((strip?.children.length === PICS.length && cv?.width > 0) ? 'OK' : 'FAIL')
+           (on ? ((strip?.children.length >= PICS.length + 1 && cv?.width > 0) ? 'OK' : 'FAIL')
                : '(조각 퍼즐 화면을 열고 다시 돌릴 것)'));
 
   return log.join('\n');

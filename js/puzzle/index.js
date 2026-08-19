@@ -1,11 +1,19 @@
 /* ============================================================
    puzzle/index.js — 조각 퍼즐
    ------------------------------------------------------------
-   그림은 pics.js, 조각 기하는 cut.js. 여기는 보여 주기와 배선만.
+   그림은 pics.js(기본 30장) + 내가 등록한 사진, 조각 기하는 cut.js.
+   여기는 보여 주기와 배선만.
 
    왼쪽이 맞추는 판(제 그림이 흐리게 비치고 조각 자리가 그려져 있다),
    오른쪽에 조각이 흩어져 있다. 조각을 끌어 제자리 근처에 놓으면
    착 붙는다. 엉뚱한 자리에 놓으면 그냥 그 자리에 남는다 — 벌 없음.
+
+   자르기는 열 때마다 무작위다 (cut.js 의 BSP). 같은 그림이라도
+   매번 다르게 잘린다.
+
+   내 사진: 📷 사진 추가 칩 → 사진첩에서 고르면 줄여서 IndexedDB 에
+   저장하고, 사진마다 하·중·상 세 단계가 생긴다. 사진 칩을 2초
+   길게 누르면 지운다 (파괴적 동작은 어렵게 — 3~6세 UX 원칙).
 
    레이어 3장 (CSS 로 겹쳐 두고 GPU 가 합성한다)
      p-drag   ③ 지금 끌고 있는 조각, 칭찬 반짝이
@@ -20,9 +28,11 @@ import { attachPen } from '../core/pen.js';
 import { VIEW, PIC, SNAP, buildPuzzle, tracePiece } from './cut.js';
 import { PICS, drawScene } from './pics.js';
 import { sfx, voice } from '../core/audio.js';
+import { photos } from '../core/store.js';
 
 const DPR = Math.min(window.devicePixelRatio || 1, 2);
 const DONE_KEY = 'puzzleDone';
+const HARD_NAME = { 1: '3조각', 2: '5조각', 3: '8조각' };
 
 export function initPuzzle({ toast, goHome }) {
   const $ = (id) => document.getElementById(id);
@@ -34,14 +44,18 @@ export function initPuzzle({ toast, goHome }) {
   const dctx = cDrag.getContext('2d');
 
   let done = new Set();
+  let LV = [...PICS];                   // 기본 그림 + 내 사진 단계들
   let W = 0, H = 0, S = 1;
-  let li = 0, level = PICS[0];
+  let li = 0, level = LV[0];
   let pieces = [], placed = new Set();
   let order = [];                       // 그리는 순서 = 아래→위. 집으면 맨 위로
   let held = null, grab = { x: 0, y: 0 };
   let scene = null, bitmaps = new Map();
   let party = null, raf = 0, advanceTimer = 0;
   let vox = null;
+
+  /* 내 사진: id → { blob, url, img } */
+  const album = new Map();
 
   /* ── 레이아웃 ─────────────────────────────────────────── */
   function doLayout() {
@@ -62,12 +76,27 @@ export function initPuzzle({ toast, goHome }) {
   }
 
   /* ── 조각 굽기 ────────────────────────────────────────── */
+  function paintScene(c, w, h) {
+    if (!level.photo) { drawScene(level, c, w, h); return; }
+    const img = album.get(level.photo)?.img;
+    if (!img) {                                        // 아직 로딩 중
+      c.fillStyle = '#f2ead9';
+      c.fillRect(0, 0, w, h);
+      return;
+    }
+    // 사진을 판 비율(4:3)에 맞춰 가운데를 꽉 차게 자른다
+    const iw = img.naturalWidth, ih = img.naturalHeight;
+    const k = Math.max(w / iw, h / ih);
+    const cw = w / k, ch = h / k;
+    c.drawImage(img, (iw - cw) / 2, (ih - ch) / 2, cw, ch, 0, 0, w, h);
+  }
+
   function bake() {
     if (!W || !level) return;
     scene = document.createElement('canvas');
     scene.width = Math.max(2, Math.round(PIC.w * S));
     scene.height = Math.max(2, Math.round(PIC.h * S));
-    drawScene(level, scene.getContext('2d'), scene.width, scene.height);
+    paintScene(scene.getContext('2d'), scene.width, scene.height);
 
     bitmaps = new Map();
     for (const p of pieces) {
@@ -100,7 +129,6 @@ export function initPuzzle({ toast, goHome }) {
 
   function drawBoard() {
     bctx.clearRect(0, 0, W, H);
-    // 판 테두리
     bctx.save();
     bctx.beginPath();
     bctx.roundRect((PIC.x - 10) * S, (PIC.y - 10) * S, (PIC.w + 20) * S, (PIC.h + 20) * S, 16 * S);
@@ -109,14 +137,12 @@ export function initPuzzle({ toast, goHome }) {
     bctx.shadowBlur = 12 * S; bctx.shadowOffsetY = 3 * S;
     bctx.fill();
     bctx.restore();
-    // 흐린 본그림 — 어디에 무엇이 오는지 알려 준다
     if (scene) {
       bctx.save();
       bctx.globalAlpha = 0.16;
       bctx.drawImage(scene, PIC.x * S, PIC.y * S);
       bctx.restore();
     }
-    // 조각 자리
     bctx.save();
     bctx.lineWidth = 1.5 * S;
     bctx.strokeStyle = 'rgba(120,95,60,.3)';
@@ -128,7 +154,6 @@ export function initPuzzle({ toast, goHome }) {
       bctx.stroke();
     }
     bctx.restore();
-    // 맞춘 조각
     for (const p of pieces) if (placed.has(p.id)) drawPieceAt(bctx, p, p.home.x, p.home.y);
   }
 
@@ -197,9 +222,9 @@ export function initPuzzle({ toast, goHome }) {
     toast('다 맞췄어요! 🎉');
     clearTimeout(advanceTimer);
     advanceTimer = setTimeout(() => {
-      const next = PICS.findIndex((L, i) => i > li && !done.has(L.id));
+      const next = LV.findIndex((L, i) => i > li && !done.has(L.id));
       if (next >= 0) openLevel(next);
-      else if (li < PICS.length - 1) openLevel(li + 1);
+      else if (li < LV.length - 1) openLevel(li + 1);
     }, 1700);
   }
 
@@ -255,16 +280,96 @@ export function initPuzzle({ toast, goHome }) {
     }
   });
 
+  /* ── 내 사진 ──────────────────────────────────────────── */
+  /** 사진첩 원본은 크다 — 긴 변 1280 으로 줄여 JPEG 로 저장한다 */
+  async function shrink(file) {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await new Promise((res, rej) => {
+        const i = new Image();
+        i.onload = () => res(i); i.onerror = rej;
+        i.src = url;
+      });
+      const k = Math.min(1, 1280 / Math.max(img.naturalWidth, img.naturalHeight));
+      const cv = document.createElement('canvas');
+      cv.width = Math.max(2, Math.round(img.naturalWidth * k));
+      cv.height = Math.max(2, Math.round(img.naturalHeight * k));
+      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+      return await new Promise(res => cv.toBlob(res, 'image/jpeg', 0.86));
+    } finally { URL.revokeObjectURL(url); }
+  }
+
+  function photoLevels(items) {
+    return items.flatMap(ph => [1, 2, 3].map(hard => ({
+      id: `p${ph.id}h${hard}`, photo: ph.id, hard,
+      name: HARD_NAME[hard], ico: '📷',
+      seed: ph.id * 131 + hard
+    })));
+  }
+
+  /** IndexedDB 의 사진을 읽어 단계 목록과 이미지 캐시를 맞춘다 */
+  async function refreshPhotos() {
+    let items = [];
+    try { items = await photos.all(); } catch { /* 저장소를 못 열면 기본 그림만 */ }
+    for (const ph of items) {
+      if (album.has(ph.id)) continue;
+      const url = URL.createObjectURL(ph.blob);
+      const entry = { blob: ph.blob, url, img: null };
+      album.set(ph.id, entry);
+      const img = new Image();
+      img.onload = () => {
+        entry.img = img;
+        if (level?.photo === ph.id) { bake(); redrawAll(); }   // 열려 있으면 바로 갱신
+      };
+      img.src = url;
+    }
+    for (const [id, e] of album)                       // 지워진 사진 정리
+      if (!items.some(ph => ph.id === id)) { URL.revokeObjectURL(e.url); album.delete(id); }
+    LV = [...PICS, ...photoLevels(items)];
+    li = Math.max(0, Math.min(li, LV.length - 1));
+  }
+
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = 'image/*';
+  fileInput.multiple = true;
+  fileInput.addEventListener('change', async () => {
+    const files = [...fileInput.files];
+    fileInput.value = '';
+    if (!files.length) return;
+    let firstId = null;
+    for (const f of files) {
+      try {
+        const blob = await shrink(f);
+        if (blob) firstId = await photos.add(blob);
+      } catch { /* 한 장이 깨져도 나머지는 계속 */ }
+    }
+    await refreshPhotos();
+    buildStrip();
+    if (firstId != null) {
+      toast('사진 퍼즐이 생겼어요! 📷');
+      openLevel(LV.findIndex(L => L.photo === firstId));
+    }
+  });
+
+  async function removePhoto(photoId) {
+    if (!window.confirm('이 사진 퍼즐을 지울까요?')) return;
+    try { await photos.del(photoId); } catch { /* 못 지워도 그냥 둔다 */ }
+    await refreshPhotos();
+    buildStrip();
+    sfx.clear();
+    toast('사진을 지웠어요');
+    if (level.photo === photoId) openLevel(Math.min(li, LV.length - 1));
+  }
+
   /* ── 단계 이동 ────────────────────────────────────────── */
-  function openLevel(i, scatterSeed) {
+  function openLevel(i) {
     clearTimeout(advanceTimer);
     cancelAnimationFrame(raf);
-    li = Math.max(0, Math.min(PICS.length - 1, i));
-    level = PICS[li];
-    // 처음 열 때는 씨앗을 고정한다 — 같은 문제는 조각도 같은 자리에서 시작한다.
-    // (자가 점검이 조각 위치를 알 수 있는 방법이기도 하다)
-    // 다시하기(again)만 무작위 씨앗으로 새로 흩는다.
-    pieces = buildPuzzle(level, scatterSeed ?? level.seed);
+    li = Math.max(0, Math.min(LV.length - 1, i));
+    level = LV[li];
+    // 열 때마다 새로 자른다 — 같은 그림이라도 매번 다른 조각이 나온다
+    pieces = buildPuzzle(level, (Math.random() * 1e9) | 0);
     placed = new Set();
     order = [...pieces];
     held = null; party = null;
@@ -272,7 +377,7 @@ export function initPuzzle({ toast, goHome }) {
     localStorage.setItem(DONE_KEY + ':at', level.id);
     $('puzzle-name').textContent = level.name;
     $('btn-puzzle-prev').disabled = li === 0;
-    $('btn-puzzle-next').disabled = li === PICS.length - 1;
+    $('btn-puzzle-next').disabled = li === LV.length - 1;
     for (const el of document.querySelectorAll('#puzzle-strip .lvl'))
       el.classList.toggle('is-on', el.dataset.lvl === level.id);
     bake();
@@ -282,22 +387,37 @@ export function initPuzzle({ toast, goHome }) {
   function buildStrip() {
     const strip = $('puzzle-strip');
     strip.innerHTML = '';
-    PICS.forEach((L, i) => {
+    LV.forEach((L, i) => {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'lvl' + (L.id === level?.id ? ' is-on' : '');
       b.dataset.lvl = L.id;
       b.dataset.hard = L.hard;
-      b.innerHTML = `<span class="ico">${L.ico}</span><span class="lbl">${L.name}</span>` +
+      const face = L.photo
+        ? `<img class="thumb" src="${album.get(L.photo)?.url ?? ''}" alt="">`
+        : `<span class="ico">${L.ico}</span>`;
+      b.innerHTML = `${face}<span class="lbl">${L.name}</span>` +
                     (done.has(L.id) ? '<span class="star">⭐</span>' : '');
       b.addEventListener('click', () => { sfx.tap(); openLevel(i); });
+      if (L.photo) {                                    // 2초 길게 누르면 사진 삭제
+        let t = 0;
+        b.addEventListener('pointerdown', () => { t = setTimeout(() => removePhoto(L.photo), 2000); });
+        for (const ev of ['pointerup', 'pointercancel', 'pointerleave'])
+          b.addEventListener(ev, () => clearTimeout(t));
+      }
       strip.appendChild(b);
     });
+    // 📷 사진 추가 — 부모가 쓰는 버튼이라 맨 뒤에 둔다
+    const add = document.createElement('button');
+    add.type = 'button';
+    add.className = 'lvl';
+    add.innerHTML = '<span class="ico">📷</span><span class="lbl">사진 추가</span>';
+    add.addEventListener('click', () => { sfx.tap(); fileInput.click(); });
+    strip.appendChild(add);
   }
 
   $('btn-puzzle-home').addEventListener('click', () => { clearTimeout(advanceTimer); goHome(); });
-  $('btn-puzzle-again').addEventListener('click', () =>
-    { sfx.undo(); openLevel(li, (Math.random() * 1e9) | 0); });
+  $('btn-puzzle-again').addEventListener('click', () => { sfx.undo(); openLevel(li); });
   $('btn-puzzle-prev').addEventListener('click', () => { sfx.tap(); openLevel(li - 1); });
   $('btn-puzzle-next').addEventListener('click', () => { sfx.tap(); openLevel(li + 1); });
 
@@ -308,16 +428,18 @@ export function initPuzzle({ toast, goHome }) {
   return {
     enter() {
       done = new Set(JSON.parse(localStorage.getItem(DONE_KEY) || '[]'));
-      const last = localStorage.getItem(DONE_KEY + ':at');
-      let i = Math.max(0, PICS.findIndex(L => L.id === last));
-      if (done.has(PICS[i].id)) {
-        const next = PICS.findIndex(L => !done.has(L.id));
-        if (next >= 0) i = next;
-      }
-      level = PICS[i];
-      buildStrip();
-      openLevel(i);
-      doLayout();
+      refreshPhotos().finally(() => {
+        const last = localStorage.getItem(DONE_KEY + ':at');
+        let i = Math.max(0, LV.findIndex(L => L.id === last));
+        if (done.has(LV[i].id)) {
+          const next = LV.findIndex(L => !done.has(L.id));
+          if (next >= 0) i = next;
+        }
+        level = LV[i];
+        buildStrip();
+        openLevel(i);
+        doLayout();
+      });
     }
   };
 }

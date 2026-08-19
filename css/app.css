@@ -226,6 +226,8 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .lvl .ico{font-size:26px;line-height:1}
 .lvl .lbl{font-size:10px;font-weight:800;opacity:.55}
 .lvl .star{position:absolute;top:-4px;right:-4px;font-size:15px}
+.lvl .thumb{width:38px;height:28px;object-fit:cover;border-radius:8px;display:block;
+            pointer-events:none;background:#e9dfca}
 .lvl.is-on{background:#fff3df;border-color:var(--accent)}
 
 /* 난이도는 색 띠로만 알린다 — 글자를 못 읽는 나이라 하/중/상을 써 봐야 소용없다 */
