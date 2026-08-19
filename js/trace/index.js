@@ -80,6 +80,10 @@ export function initPractice({ toast, goHome }) {
      미로=또각또각). 점 잇기만 없다 — 점에 닿을 때 울리는 게 더 분명하다. */
   let vox = null, voxAt = 0, voxPt = null;
 
+  /* 완성 때 읽어 줄 말. 펜을 떼는 순간(pointerup = 사용자 제스처 안)에
+     동기로 읽는다 — iOS 에서 유일하게 확실히 소리가 나는 경로다. */
+  let sayOnLift = null;
+
   /* 점 잇기: 각 점이 경로의 몇 번째 점인지 미리 찾아 둔다.
      진행이 그 지점을 넘으면 "딩" 하고 한 음씩 올라간다. */
   let dotAt = [], dotsHit = 0;
@@ -303,8 +307,10 @@ export function initPractice({ toast, goHome }) {
     ictx.clearRect(0, 0, W, H);
     vox?.stop(); vox = null;          // 쓰는 소리를 끄고 팡파르만 들리게
     sfx.cheer(courseId);
-    // 글자·숫자 코스는 팡파르가 잦아들 때쯤 이름을 읽어 준다 (ㄱ→"기역", A→"에이", 7→"칠")
-    if (course.lang) setTimeout(() => say(level.say ?? level.name, course.lang), 550);
+    // 읽기는 여기서 하지 않는다 — 완성은 보통 펜이 움직이는 중에 판정되는데,
+    // iOS 는 터치 제스처의 동기 흐름 밖에서 부른 첫 speak 을 무음으로 버린다.
+    // 펜을 떼는 pointerup(제스처 안)에서 읽도록 표시만 해 둔다.
+    if (course.lang) sayOnLift = level.say ?? level.name;
     celebrate();
     toast('잘했어요! 🎉');
     clearTimeout(advanceTimer);
@@ -356,6 +362,10 @@ export function initPractice({ toast, goHome }) {
     onEnd: () => {
       drawing = false; inkPrev = null; voxPt = null;
       vox?.stop(); vox = null;
+      if (sayOnLift) {                       // 제스처 안에서 동기로 — 순서를 바꾸지 말 것
+        say(sayOnLift, course.lang);
+        sayOnLift = null;
+      }
       animate();
     }
   });
@@ -368,6 +378,7 @@ export function initPractice({ toast, goHome }) {
     tracer = createTracer(level.paths, { tol: level.tol ?? course.tol });
     party = null;
     drawing = false;
+    sayOnLift = null;
     vox?.stop(); vox = null;
     dotsHit = 0;
     dotAt = (level.dots || []).map(([x, y]) => {          // 점 → 경로 인덱스

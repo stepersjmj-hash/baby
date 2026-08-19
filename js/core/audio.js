@@ -39,24 +39,7 @@ function noise(a) {
   return noiseBuf;
 }
 
-/* iOS 는 페이지의 "첫 speak" 이 사용자 제스처의 동기 흐름 안에 있어야
-   하고, 그 뒤부터는 지연·비동기 speak 도 허용된다. (아이패드 실측:
-   import 를 기다린 뒤의 speak 은 첫 speak 으로는 막히고, 제스처 안에서
-   한 번 speak 한 뒤에는 어디서 불러도 나온다.)
-   그래서 터치에서 빈 발화를 동기로 흘려 세션을 푼다. 성공(onstart/onend)
-   표시가 올 때까지 다음 터치마다 다시 시도하되, 큐에 쌓지는 않는다. */
-let ttsPrimed = false;
-function primeTts() {
-  if (ttsPrimed || !('speechSynthesis' in window)) return;
-  try {
-    if (speechSynthesis.pending || speechSynthesis.speaking) return;   // 스팸 방지
-    const u = new SpeechSynthesisUtterance('');
-    u.onstart = u.onend = () => { ttsPrimed = true; };
-    speechSynthesis.speak(u);
-  } catch { /* 목소리가 없으면 그만 */ }
-}
-
-export function unlock() { ac(); primeTts(); }
+export function unlock() { ac(); }
 export function setMuted(v) { muted = v; localStorage.setItem('sfx', v ? 'off' : 'on'); }
 export function isMuted() { return muted; }
 

@@ -164,10 +164,8 @@ $('btn-sound').addEventListener('click', () => {
 $('btn-gallery').addEventListener('click', () => { sfx.tap(); show('gallery'); buildGallery(); });
 $('btn-gallery-back').addEventListener('click', () => { sfx.tap(); show('home'); });
 
-// iOS 는 사용자 제스처 안에서만 오디오·TTS 를 켤 수 있다.
-// TTS 잠금은 풀렸다는 표시가 올 때까지 터치마다 다시 시도한다
-// (풀린 뒤에는 unlock() 이 바로 돌아나온다 — 비용 없음)
-window.addEventListener('pointerdown', unlock);
+// iOS 는 사용자 제스처 안에서만 오디오를 켤 수 있다
+window.addEventListener('pointerdown', unlock, { once: true });
 
 // 두 손가락 확대/더블탭 확대 차단 (그림 그릴 때 화면이 튀는 걸 막는다)
 document.addEventListener('gesturestart', e => e.preventDefault());
