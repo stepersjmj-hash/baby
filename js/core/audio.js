@@ -45,10 +45,13 @@ let ttsPrimed = false;
 function primeTts() {
   if (ttsPrimed || !('speechSynthesis' in window)) return;
   try {
-    const u = new SpeechSynthesisUtterance(' ');
+    // 빈 문자열/공백은 iOS 가 무시할 수 있어 실제 글자를 무음으로 보낸다.
+    // onstart 가 와야 진짜 풀린 것 — 안 오면 다음 터치에서 다시 시도한다.
+    const u = new SpeechSynthesisUtterance('음');
     u.volume = 0;
+    u.onstart = () => { ttsPrimed = true; };
+    speechSynthesis.resume();
     speechSynthesis.speak(u);
-    ttsPrimed = true;
   } catch { /* 목소리가 없으면 그만 */ }
 }
 

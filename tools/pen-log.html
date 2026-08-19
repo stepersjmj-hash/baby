@@ -45,6 +45,9 @@
     <button id="b-clear">지우기</button>
     <button id="b-ta" class="on">touch-action: none</button>
     <button id="b-log">기록 보기</button>
+    <button id="b-tts">🗣️ 바로 읽기</button>
+    <button id="b-tts2">🕐 1초 뒤 읽기</button>
+    <span id="tts-stat" style="font-weight:800">읽기 시험 대기</span>
     <span id="hint">한 번에, 펜을 떼지 말고 길게 그어 보세요</span>
     <span id="ver" style="font-weight:800"></span>
   </div>
@@ -208,6 +211,35 @@ $('b-log').addEventListener('click', () => { logEl.hidden = !logEl.hidden; if (!
     el.textContent = ok ? '앱 최신 ✓' : '앱이 옛 캐시 ✗ (아이콘 지우고 다시 추가)';
     el.style.color = ok ? '#1a7f37' : '#d92b2b';
   } catch { el.textContent = ''; }
+})();
+
+/* ── 읽기(TTS) 시험 ──────────────────────────────────────
+   "바로 읽기" 는 터치 안에서, "1초 뒤 읽기" 는 터치 밖에서 speak 한다.
+   앱의 읽어 주기는 후자와 같은 조건이다.
+   · 사파리 탭 O / 홈 화면 앱 X 면 → iOS 홈 화면 앱 TTS 버그 (17.4 에서 수정)
+   · 둘 다 X 면 → 기기에 음성이 없거나 다른 문제 */
+(() => {
+  const stat = (m) => { $('tts-stat').textContent = m; };
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || !!navigator.standalone;
+  const mode = standalone ? '홈화면앱' : '사파리탭';
+
+  function trySpeak(tag) {
+    if (!('speechSynthesis' in window)) { stat('speechSynthesis 없음'); return; }
+    const n = speechSynthesis.getVoices().length;
+    const u = new SpeechSynthesisUtterance('기역');
+    u.lang = 'ko-KR';
+    let started = false;
+    u.onstart = () => { started = true; stat(`${tag}: 읽기 시작 ✓ (${mode}, 음성 ${n}개)`); };
+    u.onerror = (e) => stat(`${tag}: 오류 ${e.error} (${mode}, 음성 ${n}개)`);
+    stat(`${tag}: 요청함… (${mode}, 음성 ${n}개)`);
+    try { speechSynthesis.resume(); speechSynthesis.speak(u); } catch (e) { stat(`${tag}: 예외 ${e.name}`); }
+    setTimeout(() => {
+      if (!started) stat(`${tag}: 3초째 무반응 ✗ (${mode}, 음성 ${speechSynthesis.getVoices().length}개)`);
+    }, 3000);
+  }
+
+  $('b-tts').addEventListener('click', () => trySpeak('바로'));
+  $('b-tts2').addEventListener('click', () => { stat('1초 뒤…'); setTimeout(() => trySpeak('1초 뒤'), 1000); });
 })();
 
 fit(); stats();
