@@ -39,7 +39,20 @@ function noise(a) {
   return noiseBuf;
 }
 
-export function unlock() { ac(); }
+/* iOS 는 TTS 도 사용자 터치 안에서 한 번 시작해 줘야 이후 자동 호출이
+   허용된다. 첫 터치에서 무음 한 마디를 흘려 잠금을 푼다. */
+let ttsPrimed = false;
+function primeTts() {
+  if (ttsPrimed || !('speechSynthesis' in window)) return;
+  try {
+    const u = new SpeechSynthesisUtterance(' ');
+    u.volume = 0;
+    speechSynthesis.speak(u);
+    ttsPrimed = true;
+  } catch { /* 목소리가 없으면 그만 */ }
+}
+
+export function unlock() { ac(); primeTts(); }
 export function setMuted(v) { muted = v; localStorage.setItem('sfx', v ? 'off' : 'on'); }
 export function isMuted() { return muted; }
 
@@ -198,15 +211,21 @@ const CHEER = {
    글자·숫자를 다 쓰면 이름을 읽어 준다. 음원 파일 없이 기기 내장
    TTS(speechSynthesis)를 쓴다 — iOS 에 한국어·영어 목소리가 있다.
    음소거(🔊)를 켜면 이것도 조용해진다. */
+let lastUtter = null;      // iOS 는 utterance 를 붙잡아 두지 않으면 GC 돼서 소리가 안 난다
+
 export function say(text, lang = 'ko-KR') {
   if (muted || !('speechSynthesis' in window)) return;
   try {
-    speechSynthesis.cancel();                  // 빨리 넘길 때 겹쳐 읽지 않게
+    const synth = speechSynthesis;
+    if (synth.speaking || synth.pending) synth.cancel();   // 빨리 넘길 때 겹쳐 읽지 않게
     const u = new SpeechSynthesisUtterance(text);
     u.lang = lang;
     u.rate = 0.85;                             // 아이가 따라 말할 수 있게 천천히
     u.pitch = 1.05;
-    speechSynthesis.speak(u);
+    lastUtter = u;
+    synth.resume();                            // iOS 가 일시정지로 굳어 있으면 speak 가 무시된다
+    // cancel() 직후의 speak 는 iOS 가 삼키는 일이 있다 — 한 박자 띄운다
+    setTimeout(() => { try { synth.speak(u); } catch { /* 무시 */ } }, 60);
   } catch { /* 목소리가 없는 기기면 조용히 넘어간다 */ }
 }
 
