@@ -362,7 +362,10 @@ export function initPractice({ toast, goHome }) {
     onEnd: () => {
       drawing = false; inkPrev = null; voxPt = null;
       vox?.stop(); vox = null;
-      if (sayOnLift) {                       // 제스처 안에서 동기로 — 순서를 바꾸지 말 것
+      // 터치 기기(아이패드)에서는 pointerup 직후 원천 이벤트인 touchend 가
+      // 따라온다 — 읽기는 거기서 한다 (아래 리스너). iOS 가 제스처 권한을
+      // 주는 건 원천 터치 이벤트 쪽이다. 터치가 없는 기기(맥)만 여기서 읽는다.
+      if (sayOnLift && !('ontouchend' in window)) {
         say(sayOnLift, course.lang);
         sayOnLift = null;
       }
@@ -422,6 +425,15 @@ export function initPractice({ toast, goHome }) {
       strip.appendChild(b);
     });
   }
+
+  // 아이패드: 펜을 떼면 pointerup 다음에 원천 touchend 가 온다.
+  // 완성 읽기는 여기서 동기로 한다 — iOS 는 click/touchend 같은 원천
+  // 이벤트 핸들러 안의 speak 만 확실히 소리를 낸다.
+  document.addEventListener('touchend', () => {
+    if (!sayOnLift) return;
+    say(sayOnLift, course.lang);
+    sayOnLift = null;
+  }, true);
 
   // 아래 이름표를 누르면 읽어 준다 — 아이가 듣고 싶을 때 다시 듣는 용도이자,
   // 터치 안에서 도는 가장 확실한 TTS 경로다

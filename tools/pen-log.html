@@ -49,6 +49,7 @@
     <button id="b-tts2">🕐 1초 뒤 읽기</button>
     <button id="b-tts3">🎵 효과음+읽기</button>
     <button id="b-tts4">📱 앱 경로로 읽기</button>
+    <button id="b-tts5">✏️ 떼면 읽기</button>
     <span id="tts-stat" style="font-weight:800">읽기 시험 대기</span>
     <span id="hint">한 번에, 펜을 떼지 말고 길게 그어 보세요</span>
     <span id="ver" style="font-weight:800"></span>
@@ -161,7 +162,7 @@ function end(e) {
   active = null;
   try { pad.releasePointerCapture(e.pointerId); } catch (err) { /* 이미 풀림 */ }
   if (e.type === 'pointercancel') { cancels++; cancelMarks.push(local(e)); push('CANCEL', e); }
-  else { ups++; push('UP', e); }
+  else { ups++; push('UP', e); window.__liftPen?.(); }
   stats();
   redraw();
 }
@@ -262,6 +263,30 @@ $('b-log').addEventListener('click', () => { logEl.hidden = !logEl.hidden; if (!
     stat('팡파르… 0.55초 뒤 읽기');
     setTimeout(() => trySpeak('효과음+'), 550);
   });
+
+  // ✏️ 떼면 읽기: 어떤 이벤트가 제스처 권한을 갖는지 실증한다.
+  // 켜 두고 패드에 선을 긋고 떼면 — pointerup 핸들러에서 "펜",
+  // 원천 touchend 핸들러에서 "터치" 를 각각 speak 한다.
+  // 들리는 단어가 곧 그 기기에서 소리가 나는 이벤트다.
+  window.__liftSpeak = false;
+  let wantTouchWord = false;
+  $('b-tts5').addEventListener('click', () => {
+    window.__liftSpeak = !window.__liftSpeak;
+    $('b-tts5').classList.toggle('on', window.__liftSpeak);
+    stat(window.__liftSpeak ? '켜짐 — 선을 긋고 떼 보세요 ("펜"/"터치" 중 들리는 것을 기억)' : '떼면 읽기 끔');
+  });
+  window.__liftPen = () => {                 // 패드의 pointerup 에서 부른다
+    if (!window.__liftSpeak) return;
+    const u = new SpeechSynthesisUtterance('펜');
+    u.lang = 'ko-KR'; speechSynthesis.speak(u);
+    wantTouchWord = true;
+  };
+  document.addEventListener('touchend', () => {
+    if (!window.__liftSpeak || !wantTouchWord) return;
+    wantTouchWord = false;
+    const u = new SpeechSynthesisUtterance('터치');
+    u.lang = 'ko-KR'; speechSynthesis.speak(u);
+  }, true);
 
   // 앱이 쓰는 진짜 모듈(say)을 그대로 불러 읽는다.
   // 미리 불러 두는 이유: 버튼 안에서 import 를 기다리면 speak 이
