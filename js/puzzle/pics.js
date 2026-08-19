@@ -100,6 +100,29 @@ export const PICS = [
 
 const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 
+/* iOS 사파리는 캔버스에서 Apple Color Emoji 를 큰 폰트(대략 256px 초과)로
+   찍으면 소리 없이 아무것도 안 그린다. 퍼즐 주인공은 300px 를 훌쩍 넘어서
+   아이패드에서만 그림이 빈다 — 작게 찍어 확대하는 것으로 우회한다. */
+const EMOJI_CAP = 120;
+
+function fillEmoji(c, ch, x, y, size) {
+  if (size <= EMOJI_CAP) {
+    c.font = `${size}px ${EMOJI_FONT}`;
+    c.fillText(ch, x, y);
+    return;
+  }
+  const pad = 1.35;                        // 이모지가 폰트 상자를 살짝 넘친다
+  const t = document.createElement('canvas');
+  t.width = t.height = Math.ceil(EMOJI_CAP * pad);
+  const tc = t.getContext('2d');
+  tc.font = `${EMOJI_CAP}px ${EMOJI_FONT}`;
+  tc.textAlign = 'center';
+  tc.textBaseline = 'middle';
+  tc.fillText(ch, t.width / 2, t.height / 2);
+  const d = size * pad;
+  c.drawImage(t, x - d / 2, y - d / 2, d, d);
+}
+
 /** 그림 한 장을 (0,0)~(w,h) 에 그린다 */
 export function drawScene(level, c, w, h) {
   const g = c.createLinearGradient(0, 0, 0, h);
@@ -110,9 +133,6 @@ export function drawScene(level, c, w, h) {
   c.save();
   c.textAlign = 'center';
   c.textBaseline = 'middle';
-  for (const it of level.items) {
-    c.font = `${it.s * h}px ${EMOJI_FONT}`;
-    c.fillText(it.e, it.x * w, it.y * h);
-  }
+  for (const it of level.items) fillEmoji(c, it.e, it.x * w, it.y * h, it.s * h);
   c.restore();
 }
