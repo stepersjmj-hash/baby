@@ -17,7 +17,8 @@ const ACTIVITIES = [
   { id: 'coloring', emoji: '🎨', name: '색칠하기',   desc: '펜으로 자유롭게', ready: true },
   { id: 'trace',    emoji: '✏️', name: '따라 그리기', desc: '점선 따라 쓱쓱', ready: true },
   { id: 'hangul',   emoji: '🇰🇷', name: '한글 쓰기',   desc: 'ㄱ ㄴ ㄷ 획순', ready: true },
-  { id: 'number',   emoji: '🔢', name: '숫자 쓰기',   desc: '1부터 10까지', ready: true },
+  { id: 'number',   emoji: '🔢', name: '숫자 쓰기',   desc: '1부터 100까지', ready: true },
+  { id: 'english',  emoji: '🔤', name: '영어 쓰기',   desc: 'A B C 획순', ready: true },
   { id: 'maze',     emoji: '🌀', name: '미로 찾기',   desc: '길을 그어 탈출', ready: true },
   { id: 'dots',     emoji: '🔗', name: '점 잇기',     desc: '이으면 그림이!', ready: true },
   { id: 'puzzle',   emoji: '🧩', name: '조각 퍼즐',   desc: '맞추면 그림 완성!', ready: true },
@@ -29,7 +30,7 @@ const ACTIVITIES = [
 /* ── 화면 전환 ─────────────────────────────────────────────
    따라 그리기류 다섯(선 긋기·한글·숫자·미로·점 잇기)은 화면이 같아서
    #screen-trace 하나를 공유한다. 러너가 코스만 갈아 끼운다. */
-const SCREEN_OF = { coloring: 'coloring', trace: 'trace', hangul: 'trace',
+const SCREEN_OF = { coloring: 'coloring', trace: 'trace', hangul: 'trace', english: 'trace',
                     number: 'trace', maze: 'trace', dots: 'trace', puzzle: 'puzzle',
                     spot: 'spot' };
 
@@ -124,6 +125,7 @@ const practice = initPractice({ toast, goHome });
 const ACTIVITY_APPS = {
   coloring,
   trace: practice, hangul: practice, number: practice, maze: practice, dots: practice,
+  english: practice,
   puzzle: initPuzzle({ toast, goHome }),
   spot: initSpot({ toast, goHome })
 };

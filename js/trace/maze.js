@@ -62,7 +62,7 @@ function solve(g, from, to) {
   return path.reverse();
 }
 
-function makeMaze({ id, name, ico, cols, rows, seed }) {
+function makeMaze({ id, name, ico, cols, rows, seed, from, to }) {
   const g = carve(cols, rows, seed);
   const W = g[0].length, H = g.length;
   const cell = Math.min(920 / W, 620 / H);
@@ -75,13 +75,26 @@ function makeMaze({ id, name, ico, cols, rows, seed }) {
     for (let x = 0; x < W; x++)
       if (g[y][x] === '#') walls.push([ox + x * cell, oy + y * cell, cell, cell]);
 
-  return { id, name, ico, from: '🐭', to: '🧀',
+  return { id, name, ico, from, to,
            strokes: [poly(route)], walls, tol: cell * 0.42 };
 }
 
+/* 방 수(cols×rows)가 커질수록 어렵다. 쉬운 것부터 늘어놓는다.
+   여정마다 주인공과 목적지가 달라 "무엇을 어디로" 를 그림으로 알린다.
+   기존 z1~z4 는 id 를 지켜 아이가 모은 별이 그대로 남는다. */
 export const MAZES = [
-  { id: 'z1', name: '작은 미로', ico: '🟩', cols: 3, rows: 2, seed: 11 },
-  { id: 'z2', name: '보통 미로', ico: '🟨', cols: 4, rows: 3, seed: 27 },
-  { id: 'z3', name: '큰 미로',   ico: '🟧', cols: 5, rows: 4, seed: 42 },
-  { id: 'z4', name: '아주 큰 미로', ico: '🟥', cols: 6, rows: 4, seed: 58 }
+  { id: 'z1',  name: '치즈',    ico: '🧀', cols: 3, rows: 2, seed: 11, from: '🐭', to: '🧀' },
+  { id: 'z5',  name: '뼈다귀',  ico: '🦴', cols: 4, rows: 2, seed: 71, from: '🐶', to: '🦴' },
+  { id: 'z2',  name: '당근',    ico: '🥕', cols: 4, rows: 3, seed: 27, from: '🐰', to: '🥕' },
+  { id: 'z6',  name: '꽃길',    ico: '🌸', cols: 5, rows: 3, seed: 83, from: '🐝', to: '🌸' },
+  { id: 'z7',  name: '사탕',    ico: '🍭', cols: 6, rows: 3, seed: 95, from: '🐜', to: '🍭' },
+  { id: 'z3',  name: '도토리',  ico: '🌰', cols: 5, rows: 4, seed: 42, from: '🐿️', to: '🌰' },
+  { id: 'z8',  name: '물고기',  ico: '🐟', cols: 7, rows: 3, seed: 19, from: '🐧', to: '🐟' },
+  { id: 'z4',  name: '털실',    ico: '🧶', cols: 6, rows: 4, seed: 58, from: '🐱', to: '🧶' },
+  { id: 'z9',  name: '집 찾기', ico: '🏠', cols: 7, rows: 4, seed: 33, from: '🚗', to: '🏠' },
+  { id: 'z10', name: '연못',    ico: '🌺', cols: 5, rows: 5, seed: 47, from: '🐸', to: '🌺' },
+  { id: 'z11', name: '공룡 알', ico: '🥚', cols: 8, rows: 4, seed: 66, from: '🦖', to: '🥚' },
+  { id: 'z12', name: '달나라',  ico: '🌕', cols: 6, rows: 5, seed: 29, from: '🚀', to: '🌕' },
+  { id: 'z13', name: '보물',    ico: '💎', cols: 7, rows: 5, seed: 52, from: '⛵', to: '💎' },
+  { id: 'z14', name: '선물',    ico: '🎁', cols: 8, rows: 5, seed: 88, from: '🎅', to: '🎁' }
 ].map(makeMaze);

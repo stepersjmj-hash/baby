@@ -22,6 +22,7 @@ import { sfx, voice } from '../core/audio.js';
 import { LINES } from './lines.js';
 import { HANGUL } from './hangul.js';
 import { NUMBERS } from './numbers.js';
+import { ENGLISH } from './english.js';
 import { MAZES } from './maze.js';
 import { DOTS } from './dots.js';
 
@@ -31,6 +32,8 @@ const COURSES = {
   hangul: { levels: HANGUL,  guide: true,  tol: 40, key: 'hangulDone', voice: 'write',
             from: '✏️', to: '⭐' },
   number: { levels: NUMBERS, guide: true,  tol: 40, key: 'numberDone', voice: 'write',
+            from: '✏️', to: '⭐' },
+  english:{ levels: ENGLISH, guide: true,  tol: 40, key: 'englishDone', voice: 'write',
             from: '✏️', to: '⭐' },
   maze:   { levels: MAZES,   guide: false, tol: 40, key: 'mazeDone',   voice: 'scurry' },
   dots:   { levels: DOTS,    guide: false, tol: 60, key: 'dotsDone',   voice: null }

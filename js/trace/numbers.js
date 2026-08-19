@@ -1,5 +1,5 @@
 /* ============================================================
-   trace/numbers.js — 숫자 1~10 쓰기
+   trace/numbers.js — 숫자 쓰기: 1~10 · 십 단위 20~100
    ------------------------------------------------------------
    좌표계 1000×700. 곡선은 arc() 를 poly() 에 펼쳐 넣어 만든다.
    한 획짜리 숫자는 굴곡이 심하므로 tol 을 조금 줄였다 —
@@ -46,3 +46,27 @@ export const NUMBERS = [
   { id: 'n10', name: '10', strokes: [poly([[240, 250], [330, 160], [330, 560]]),
                                      poly(arc(620, 360, 115, 200, -PI / 2, PI * 1.5, 36))] }
 ].map(L => ({ ...L, ico: L.name }));
+
+/* ── 십 단위 20~100 ──────────────────────────────────────
+   위 낱자 획을 좁혀(remap) 나란히 놓는다. 획순은 왼쪽 숫자부터.
+   6·8·9 는 좁아진 만큼 궤도가 붙어서 tol 을 더 조인다. */
+const remap = (fn, cx, k) => t => {
+  const q = fn(t);
+  return { x: cx + (q.x - 500) * k, y: q.y };
+};
+const ZERO = poly(arc(500, 355, 165, 210, -PI / 2, -PI * 2.5, 36));   // 0 은 반시계
+const DIGIT = Object.fromEntries(NUMBERS.map(L => [L.name, L.strokes]));
+
+for (let d = 2; d <= 9; d++) {
+  NUMBERS.push({
+    id: 'n' + d + '0', name: d + '0', ico: d + '0',
+    tol: (d === 6 || d === 8 || d === 9) ? 28 : 36,
+    strokes: [...DIGIT[String(d)].map(f => remap(f, 375, 0.52)),
+              remap(ZERO, 625, 0.52)]
+  });
+}
+NUMBERS.push({
+  id: 'n100', name: '100', ico: '100', tol: 30,
+  strokes: [...DIGIT['1'].map(f => remap(f, 300, 0.38)),
+            remap(ZERO, 520, 0.38), remap(ZERO, 715, 0.38)]
+});

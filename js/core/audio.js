@@ -174,6 +174,7 @@ const STEP = {
   trace:  (p) => tone(480 + 620 * p, .05, 'triangle', .05),          // 갈수록 높아진다
   hangul: () => hiss(.04, { gain: .03, freq: 2700, q: 1.4 }),        // 사각사각 쓰는 소리
   number: () => hiss(.04, { gain: .03, freq: 2700, q: 1.4 }),
+  english:() => hiss(.04, { gain: .03, freq: 2700, q: 1.4 }),
   maze:   () => hiss(.05, { gain: .045, freq: 420, q: 3.5 }),        // 또각또각 발소리
   dots:   () => {}                                                    // 점에 닿을 때만 운다
 };
@@ -182,6 +183,7 @@ const CHEER = {
   trace:  () => seq([523, 659, 784, 1047, 1319], .22, 'triangle', .10, .07),
   hangul: () => { seq([784, 988, 1175], .26, 'sine', .10, .06); tone(392, .5, 'triangle', .06, .02); },
   number: () => { seq([784, 988, 1175], .26, 'sine', .10, .06); tone(392, .5, 'triangle', .06, .02); },
+  english:() => { seq([784, 988, 1175], .26, 'sine', .10, .06); tone(392, .5, 'triangle', .06, .02); },
   maze:   () => { tone(300, .10, 'square', .07, 0, 480);              // 치즈에 도착!
                   seq([659, 880, 1047], .24, 'triangle', .10, .08); },
   dots:   () => { hiss(.35, { gain: .05, freq: 900, to: 5000, type: 'bandpass', q: .6 });
