@@ -187,7 +187,9 @@ const CHEER = {
   dots:   () => { hiss(.35, { gain: .05, freq: 900, to: 5000, type: 'bandpass', q: .6 });
                   seq([1047, 1319, 1568, 2093], .28, 'sine', .08, .06); },
   match:  () => { seq([659, 831, 988, 1319], .30, 'sine', .09, .075);
-                  tone(330, .55, 'triangle', .05, .04); }
+                  tone(330, .55, 'triangle', .05, .04); },
+  spot:   () => { hiss(.3, { gain: .05, freq: 1200, to: 6000, type: 'bandpass', q: .7 });
+                  seq([880, 1109, 1319, 1760], .26, 'triangle', .09, .07); }
 };
 
 export const sfx = {

@@ -5,6 +5,7 @@
 import { initColoring } from './coloring/index.js';
 import { initPractice } from './trace/index.js';
 import { initMatch } from './match/index.js';
+import { initSpot } from './spot/index.js';
 import { unlock, sfx, setMuted, isMuted } from './core/audio.js';
 import { works } from './core/store.js';
 
@@ -22,14 +23,15 @@ const ACTIVITIES = [
   { id: 'match',    emoji: '🧩', name: '짝 맞추기',   desc: '선으로 이어요', ready: true },
   { id: 'sort',     emoji: '🗂️', name: '모양 분류',   desc: '끌어다 담기' },
   { id: 'count',    emoji: '🍎', name: '세어보기',    desc: '몇 개일까?' },
-  { id: 'spot',     emoji: '🔍', name: '다른 그림 찾기', desc: '눈썰미 대결' }
+  { id: 'spot',     emoji: '🔍', name: '다른 그림 찾기', desc: '눈썰미 대결', ready: true }
 ];
 
 /* ── 화면 전환 ─────────────────────────────────────────────
    따라 그리기류 다섯(선 긋기·한글·숫자·미로·점 잇기)은 화면이 같아서
    #screen-trace 하나를 공유한다. 러너가 코스만 갈아 끼운다. */
 const SCREEN_OF = { coloring: 'coloring', trace: 'trace', hangul: 'trace',
-                    number: 'trace', maze: 'trace', dots: 'trace', match: 'match' };
+                    number: 'trace', maze: 'trace', dots: 'trace', match: 'match',
+                    spot: 'spot' };
 
 function show(name) {
   for (const s of document.querySelectorAll('.screen')) s.classList.remove('is-active');
@@ -122,7 +124,8 @@ const practice = initPractice({ toast, goHome });
 const ACTIVITY_APPS = {
   coloring,
   trace: practice, hangul: practice, number: practice, maze: practice, dots: practice,
-  match: initMatch({ toast, goHome })
+  match: initMatch({ toast, goHome }),
+  spot: initSpot({ toast, goHome })
 };
 
 buildHome();
