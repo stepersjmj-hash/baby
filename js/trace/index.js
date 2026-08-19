@@ -394,6 +394,11 @@ export function initPractice({ toast, goHome }) {
       return best;
     }).filter((v, i) => i > 0);                           // 1번 점은 출발점이라 뺀다
     localStorage.setItem(course.key + ':at', level.id);
+    // 단계를 열면 무엇을 쓸지 먼저 읽어 준다 ("기역" → 아이가 따라 쓴다).
+    // 여는 경로(홈 카드·칩·◀▶)가 전부 click 이라 iOS 소리 권한이 있고,
+    // 여기서 한 번 성공하면 세션이 풀려 완성 읽기(비동기)도 나온다.
+    // 실측: 그리기(드래그)의 끝 이벤트는 pointerup/touchend 모두 권한이 없다.
+    if (course.lang) say(level.say ?? level.name, course.lang);
     $('trace-name').textContent = level.name;
     $('btn-trace-prev').disabled = li === 0;
     $('btn-trace-next').disabled = li === built.length - 1;
