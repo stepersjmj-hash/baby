@@ -6,7 +6,7 @@
      예전 캐시를 계속 쓴다 (가장 자주 겪는 함정).
    ============================================================ */
 
-const VERSION = 'v9';
+const VERSION = 'v10';
 const CACHE = `ainori-${VERSION}`;
 
 const SHELL = [
@@ -30,9 +30,9 @@ const SHELL = [
   './js/trace/maze.js',
   './js/trace/dots.js',
   './js/core/dragdrop.js',
-  './js/match/index.js',
-  './js/match/pairs.js',
-  './js/match/board.js',
+  './js/puzzle/index.js',
+  './js/puzzle/pics.js',
+  './js/puzzle/cut.js',
   './js/spot/index.js',
   './js/spot/scenes.js',
   './js/spot/judge.js',

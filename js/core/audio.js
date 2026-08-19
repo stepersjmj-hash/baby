@@ -186,7 +186,7 @@ const CHEER = {
                   seq([659, 880, 1047], .24, 'triangle', .10, .08); },
   dots:   () => { hiss(.35, { gain: .05, freq: 900, to: 5000, type: 'bandpass', q: .6 });
                   seq([1047, 1319, 1568, 2093], .28, 'sine', .08, .06); },
-  match:  () => { seq([659, 831, 988, 1319], .30, 'sine', .09, .075);
+  puzzle: () => { seq([659, 831, 988, 1319], .30, 'sine', .09, .075);
                   tone(330, .55, 'triangle', .05, .04); },
   spot:   () => { hiss(.3, { gain: .05, freq: 1200, to: 6000, type: 'bandpass', q: .7 });
                   seq([880, 1109, 1319, 1760], .26, 'triangle', .09, .07); }
@@ -214,7 +214,7 @@ export const sfx = {
            },
   cheer:   (course = 'trace') => (CHEER[course] || CHEER.trace)(),
 
-  /** 짝을 하나 맞췄다 — 맞출수록 한 음씩 올라간다 */
+  /** 짝·조각을 하나 맞췄다 — 맞출수록 한 음씩 올라간다 */
   pair:    (i = 0, n = 1) => {
              const scale = [523, 659, 784, 880, 1047, 1175, 1319];
              const f = scale[Math.min(scale.length - 1, i)];
