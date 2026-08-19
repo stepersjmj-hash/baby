@@ -39,23 +39,7 @@ function noise(a) {
   return noiseBuf;
 }
 
-/* iOS 는 TTS 도 사용자 터치 안에서 한 번 시작해 줘야 이후 자동 호출이
-   허용된다. 첫 터치에서 무음 한 마디를 흘려 잠금을 푼다. */
-let ttsPrimed = false;
-function primeTts() {
-  if (ttsPrimed || !('speechSynthesis' in window)) return;
-  try {
-    // 빈 문자열/공백은 iOS 가 무시할 수 있어 실제 글자를 무음으로 보낸다.
-    // onstart 가 와야 진짜 풀린 것 — 안 오면 다음 터치에서 다시 시도한다.
-    const u = new SpeechSynthesisUtterance('음');
-    u.volume = 0;
-    u.onstart = () => { ttsPrimed = true; };
-    speechSynthesis.resume();
-    speechSynthesis.speak(u);
-  } catch { /* 목소리가 없으면 그만 */ }
-}
-
-export function unlock() { ac(); primeTts(); }
+export function unlock() { ac(); }
 export function setMuted(v) { muted = v; localStorage.setItem('sfx', v ? 'off' : 'on'); }
 export function isMuted() { return muted; }
 
@@ -220,15 +204,28 @@ export function say(text, lang = 'ko-KR') {
   if (muted || !('speechSynthesis' in window)) return;
   try {
     const synth = speechSynthesis;
-    if (synth.speaking || synth.pending) synth.cancel();   // 빨리 넘길 때 겹쳐 읽지 않게
     const u = new SpeechSynthesisUtterance(text);
     u.lang = lang;
     u.rate = 0.85;                             // 아이가 따라 말할 수 있게 천천히
     u.pitch = 1.05;
     lastUtter = u;
-    synth.resume();                            // iOS 가 일시정지로 굳어 있으면 speak 가 무시된다
-    // cancel() 직후의 speak 는 iOS 가 삼키는 일이 있다 — 한 박자 띄운다
-    setTimeout(() => { try { synth.speak(u); } catch { /* 무시 */ } }, 60);
+
+    // iOS 는 WebAudio 컨텍스트가 돌고 있으면 TTS 를 무음/아주 작게 내는
+    // 일이 있다 — 읽는 동안 효과음을 잠깐 재우고 끝나면 다시 켠다.
+    let woke = false;
+    const wake = () => {
+      if (woke) return;
+      woke = true;
+      if (ctx && ctx.state === 'suspended') ctx.resume();
+    };
+    u.onend = wake; u.onerror = wake;
+    setTimeout(wake, 4000);                    // 행여 이벤트를 놓쳐도 다시 켠다
+    if (ctx && ctx.state === 'running') ctx.suspend();
+
+    const kick = () => { try { synth.resume(); synth.speak(u); } catch { wake(); } };
+    // cancel() 직후의 speak 는 iOS 가 삼키는 일이 있다 — 넉넉히 띄운다
+    if (synth.speaking || synth.pending) { synth.cancel(); setTimeout(kick, 180); }
+    else kick();
   } catch { /* 목소리가 없는 기기면 조용히 넘어간다 */ }
 }
 

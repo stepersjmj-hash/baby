@@ -47,6 +47,7 @@
     <button id="b-log">기록 보기</button>
     <button id="b-tts">🗣️ 바로 읽기</button>
     <button id="b-tts2">🕐 1초 뒤 읽기</button>
+    <button id="b-tts3">🎵 효과음+읽기</button>
     <span id="tts-stat" style="font-weight:800">읽기 시험 대기</span>
     <span id="hint">한 번에, 펜을 떼지 말고 길게 그어 보세요</span>
     <span id="ver" style="font-weight:800"></span>
@@ -240,6 +241,25 @@ $('b-log').addEventListener('click', () => { logEl.hidden = !logEl.hidden; if (!
 
   $('b-tts').addEventListener('click', () => trySpeak('바로'));
   $('b-tts2').addEventListener('click', () => { stat('1초 뒤…'); setTimeout(() => trySpeak('1초 뒤'), 1000); });
+
+  // 앱과 같은 조건: WebAudio 팡파르가 울리는 중에 0.55초 뒤 읽는다.
+  // 여기서만 무반응/무음이면 "효과음과 TTS 충돌" 이 원인이다.
+  $('b-tts3').addEventListener('click', () => {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) { stat('AudioContext 없음'); return; }
+    const ac = new AC();
+    [523, 659, 784, 1047, 1319].forEach((f, i) => {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'triangle'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, ac.currentTime + i * .07);
+      g.gain.exponentialRampToValueAtTime(0.1, ac.currentTime + i * .07 + .01);
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + i * .07 + .22);
+      o.connect(g); g.connect(ac.destination);
+      o.start(ac.currentTime + i * .07); o.stop(ac.currentTime + i * .07 + .25);
+    });
+    stat('팡파르… 0.55초 뒤 읽기');
+    setTimeout(() => trySpeak('효과음+'), 550);
+  });
 })();
 
 fit(); stats();
