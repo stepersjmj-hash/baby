@@ -11,7 +11,8 @@
 
 import { poly, arc } from '../core/trace.js';
 
-const O = (cx, cy, r) => poly(arc(cx, cy, r, r, -Math.PI / 2, Math.PI * 1.5, 40));  // 동그라미
+// 동그라미는 위에서 시작해 왼쪽으로 도는 반시계(상-좌-하-우) — 숫자 0, 영어 O 와 같다
+const O = (cx, cy, r) => poly(arc(cx, cy, r, r, -Math.PI / 2, -Math.PI * 2.5, 40));
 
 /* 다 쓰면 읽어 줄 이름. 자음은 이름(기역), 모음은 소리(아) */
 const SAY = {

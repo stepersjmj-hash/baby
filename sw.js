@@ -6,7 +6,7 @@
      예전 캐시를 계속 쓴다 (가장 자주 겪는 함정).
    ============================================================ */
 
-const VERSION = 'v29';
+const VERSION = 'v30';
 const CACHE = `ainori-${VERSION}`;
 
 const SHELL = [
