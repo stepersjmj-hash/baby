@@ -1,56 +1,77 @@
 /* 다른 그림 찾기 자가 점검. 브라우저 콘솔에 붙여넣어 돌린다.
 
-   판정은 엔진(spot/judge.js)과 생성기(spot/scenes.js)를 직접 불러 시험하므로
-   아이가 모은 별(진행 기록)을 건드리지 않는다. 화면 쪽은 떠 있는지만 훑는다. */
+   장면(scenes.js)과 판정(judge.js)을 직접 불러 시험하므로 아이가 모은
+   별(진행 기록)을 건드리지 않는다. 화면 쪽은 떠 있는지만 훑는다. */
 (async () => {
   const q = '?t=' + Date.now();
-  const { SPOTS, buildSpot } = await import('/js/spot/scenes.js' + q);
+  const { SPOTS, buildSpot, PANEL } = await import('/js/spot/scenes.js' + q);
   const { createSpot } = await import('/js/spot/judge.js' + q);
   const log = [];
   const HARD = { 1: '하', 2: '중', 3: '상' };
+  const want = { 1: 2, 2: 3, 3: 4 };
 
-  // 1) 구성: 30문제, 난이도별 10개씩, 전부 서로 다른 문제
+  const render = (fn) => {
+    const cv = document.createElement('canvas');
+    cv.width = PANEL.w; cv.height = PANEL.h;
+    const c = cv.getContext('2d', { willReadFrequently: true });
+    fn(c);
+    return c.getImageData(0, 0, PANEL.w, PANEL.h).data;
+  };
+
+  // 1) 구성: 9문제, 난이도별 3개, 다른 곳 수 2/3/4
   {
     const byHard = { 1: 0, 2: 0, 3: 0 };
-    const ids = new Set(), sigs = new Set();
+    const ids = new Set();
+    let bad = 0;
     for (const L of SPOTS) {
-      byHard[L.hard]++;
-      ids.add(L.id);
-      sigs.add(JSON.stringify([buildSpot(L).objs.map(o => o.e + Math.round(o.x)),
-                               [...buildSpot(L).alt]]));
+      byHard[L.hard]++; ids.add(L.id);
+      if (L.diffs.length !== want[L.hard]) bad++;
     }
-    const ok = SPOTS.length === 30 && byHard[1] === 10 && byHard[2] === 10 && byHard[3] === 10
-               && ids.size === 30 && sigs.size === 30;
-    log.push(`구성: ${SPOTS.length}문제 (하${byHard[1]} 중${byHard[2]} 상${byHard[3]}) · ` +
-             `서로 다른 문제 ${sigs.size}개  ${ok ? 'OK' : 'FAIL'}`);
+    const ok = SPOTS.length === 9 && byHard[1] === 3 && byHard[2] === 3 && byHard[3] === 3
+               && ids.size === 9 && !bad;
+    log.push(`구성: ${SPOTS.length}문제 (하${byHard[1]} 중${byHard[2]} 상${byHard[3]}) ${ok ? 'OK' : 'FAIL'}`);
   }
 
-  // 2) 문제마다: 결정적인가 · 다른 곳 수가 맞나 · 바뀐 게 진짜 다른가 · 다 찾아지나
-  const want = { 1: 2, 2: 3, 3: 4 };
+  // 2) 두 그림은 "다른 곳 근처" 말고는 픽셀까지 같아야 한다.
+  //    (같은 코드가 그리므로 안티에일리어싱까지 같다 — 어긋나면
+  //     파라미터가 엉뚱한 데를 건드린 것이다.)
+  //    또 다른 곳마다 실제로 바뀐 픽셀이 있어야 한다.
+  const MARGIN = 130;
   for (const hard of [1, 2, 3]) {
     const bad = [];
     for (const L of SPOTS.filter(x => x.hard === hard)) {
-      const b = buildSpot(L), b2 = buildSpot(L);
-      if (JSON.stringify([b.objs, [...b.alt]]) !== JSON.stringify([b2.objs, [...b2.alt]]))
-        bad.push(L.id + ':비결정적');
-      if (b.alt.size !== want[hard]) bad.push(`${L.id}:다른곳 ${b.alt.size}개`);
-      for (const [i, e] of b.alt)
-        if (e !== null && e === b.objs[i].e) bad.push(L.id + ':안 바뀜');
-      // 동그라미로 전부 찾아지는가
+      const b = buildSpot(L);
+      const dl = render(b.drawL), dr = render(b.drawR);
+      const near = b.diffs.map(() => 0);
+      let leak = 0;
+      for (let i = 0; i < dl.length; i += 4) {
+        if (dl[i] === dr[i] && dl[i+1] === dr[i+1] && dl[i+2] === dr[i+2] && dl[i+3] === dr[i+3]) continue;
+        const x = (i / 4) % PANEL.w, y = (i / 4 / PANEL.w) | 0;
+        let inside = false;
+        b.diffs.forEach((d, k) => {
+          const dist = Math.hypot(x - d.x, y - d.y);
+          if (dist <= d.r) near[k]++;
+          if (dist <= d.r + MARGIN) inside = true;
+        });
+        if (!inside) leak++;
+      }
+      if (leak) bad.push(`${L.id}:엉뚱한 곳 ${leak}px 다름`);
+      near.forEach((n, k) => { if (n < 4) bad.push(`${L.id}:${L.diffs[k]} 안 바뀜`); });
+      // 판정: 각 다른 곳을 동그라미 치면 전부 찾아진다
       const sp = createSpot(b.diffs);
       for (const d of b.diffs) {
         const ring = [...Array(14)].map((_, k) =>
-          ({ x: d.x + Math.cos(k / 14 * 6.28) * 42, y: d.y + Math.sin(k / 14 * 6.28) * 42 }));
-        if (sp.feed(ring) < 0) bad.push(L.id + ':못 찾음');
+          ({ x: d.x + Math.cos(k / 14 * 6.28) * 40, y: d.y + Math.sin(k / 14 * 6.28) * 40 }));
+        if (sp.feed(ring) < 0) bad.push(`${L.id}:못 찾음`);
       }
       if (!sp.solved) bad.push(L.id + ':미완');
     }
-    log.push(`${HARD[hard]} 10문제:  ${bad.length ? 'FAIL → ' + bad.slice(0, 3).join(' ') : 'OK'}`);
+    log.push(`${HARD[hard]} 3문제:  ${bad.length ? 'FAIL → ' + [...new Set(bad)].slice(0, 3).join(' ') : 'OK'}`);
   }
 
   // 3) 화면 전체를 마구 문질러도 한 획에 하나만 인정된다
   {
-    const b = buildSpot(SPOTS[20]);                       // 상 난이도 하나
+    const b = buildSpot(SPOTS[8]);
     const sp = createSpot(b.diffs);
     const scribble = [];
     for (let y = 20; y < 540; y += 24)
@@ -63,7 +84,6 @@
   {
     const b = buildSpot(SPOTS[0]);
     const sp = createSpot(b.diffs);
-    // 모든 다른 곳에서 가장 먼 지점을 찾아 그 근처를 콕 찍는다
     let far = null, fd = -1;
     for (let y = 30; y < 530; y += 10) for (let x = 30; x < 430; x += 10) {
       const d = Math.min(...b.diffs.map(t => Math.hypot(x - t.x, y - t.y)));

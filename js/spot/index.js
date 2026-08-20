@@ -67,25 +67,26 @@ export function initSpot({ toast, goHome }) {
     bctx.shadowColor = 'rgba(120,84,30,.16)';
     bctx.shadowBlur = 12 * S; bctx.shadowOffsetY = 3 * S;
     bctx.fill();
-    bctx.shadowColor = 'transparent';
-    bctx.lineWidth = 3 * S; bctx.strokeStyle = '#e6dac2';
-    bctx.stroke();
     bctx.restore();
   }
 
   function drawBoard() {
     bctx.clearRect(0, 0, W, H);
-    drawPanel(PANEL.lx);
-    drawPanel(PANEL.rx);
-    bctx.save();
-    bctx.textAlign = 'center'; bctx.textBaseline = 'middle';
-    bctx.font = `${scene.size * S}px ${EMOJI_FONT}`;
-    scene.objs.forEach((o, i) => {
-      bctx.fillText(o.e, (PANEL.lx + o.x) * S, (PANEL.ty + o.y) * S);
-      const a = scene.alt.has(i) ? scene.alt.get(i) : o.e;   // 오른쪽: 바뀌었거나 없거나
-      if (a !== null) bctx.fillText(a, (PANEL.rx + o.x) * S, (PANEL.ty + o.y) * S);
-    });
-    bctx.restore();
+    for (const [ox, paint] of [[PANEL.lx, scene.drawL], [PANEL.rx, scene.drawR]]) {
+      drawPanel(ox);
+      bctx.save();
+      bctx.beginPath();
+      bctx.roundRect(ox * S, PANEL.ty * S, PANEL.w * S, PANEL.h * S, 18 * S);
+      bctx.clip();
+      bctx.translate(ox * S, PANEL.ty * S);
+      bctx.scale(S, S);
+      paint(bctx);                                  // 장면이 판을 꽉 채운다
+      bctx.restore();
+      bctx.lineWidth = 3 * S; bctx.strokeStyle = '#e6dac2';   // 테두리는 장면 위에
+      bctx.beginPath();
+      bctx.roundRect(ox * S, PANEL.ty * S, PANEL.w * S, PANEL.h * S, 18 * S);
+      bctx.stroke();
+    }
   }
 
   /** 찾은 곳 동그라미(양쪽) + 진행 ●○ */
