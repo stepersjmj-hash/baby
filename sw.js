@@ -6,7 +6,7 @@
      예전 캐시를 계속 쓴다 (가장 자주 겪는 함정).
    ============================================================ */
 
-const VERSION = 'v31';
+const VERSION = 'v32';
 const CACHE = `ainori-${VERSION}`;
 
 const SHELL = [
@@ -39,6 +39,8 @@ const SHELL = [
   './js/spot/index.js',
   './js/spot/scenes.js',
   './js/spot/judge.js',
+  './js/count/index.js',
+  './js/count/levels.js',
   './assets/icon-180.png',
   './assets/icon-192.png',
   './assets/icon-512.png'

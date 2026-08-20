@@ -206,6 +206,10 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 #s-board{z-index:1}
 #s-mark{z-index:2}
 #s-ink{z-index:3}
+
+/* 세어보기 레이어 */
+#cn-board{z-index:1}
+#cn-mark{z-index:2}
 .paper-rings{
   position:absolute;top:0;left:0;right:0;height:16px;z-index:4;
   background:repeating-linear-gradient(90deg,
@@ -214,7 +218,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 }
 
 /* ───────────── 따라 그리기 ───────────── */
-#screen-trace,#screen-puzzle,#screen-spot{background:var(--bg)}
+#screen-trace,#screen-puzzle,#screen-spot,#screen-count{background:var(--bg)}
 
 .lvl{
   position:relative;

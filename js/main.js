@@ -6,6 +6,7 @@ import { initColoring } from './coloring/index.js';
 import { initPractice } from './trace/index.js';
 import { initPuzzle } from './puzzle/index.js';
 import { initSpot } from './spot/index.js';
+import { initCount } from './count/index.js';
 import { unlock, sfx, setMuted, isMuted } from './core/audio.js';
 import { works } from './core/store.js';
 
@@ -40,7 +41,7 @@ const ACTIVITIES = [
   { id: 'dots',     emoji: '🔗', name: '점 잇기',     desc: '이으면 그림이!', ready: true },
   { id: 'puzzle',   emoji: '🧩', name: '조각 퍼즐',   desc: '맞추면 그림 완성!', ready: true },
   { id: 'sort',     emoji: '🗂️', name: '모양 분류',   desc: '끌어다 담기' },
-  { id: 'count',    emoji: '🍎', name: '세어보기',    desc: '몇 개일까?' },
+  { id: 'count',    emoji: '🍎', name: '세어보기',    desc: '몇 개일까?', ready: true },
   { id: 'spot',     emoji: '🔍', name: '다른 그림 찾기', desc: '눈썰미 대결', ready: true }
 ];
 
@@ -50,7 +51,7 @@ const ACTIVITIES = [
 const SCREEN_OF = { coloring: 'coloring', trace: 'trace', hangul: 'trace', english: 'trace',
                     names: 'trace',
                     number: 'trace', maze: 'trace', dots: 'trace', puzzle: 'puzzle',
-                    spot: 'spot' };
+                    spot: 'spot', count: 'count' };
 
 function show(name) {
   for (const s of document.querySelectorAll('.screen')) s.classList.remove('is-active');
@@ -145,7 +146,8 @@ const ACTIVITY_APPS = {
   trace: practice, hangul: practice, number: practice, maze: practice, dots: practice,
   english: practice, names: practice,
   puzzle: initPuzzle({ toast, goHome }),
-  spot: initSpot({ toast, goHome })
+  spot: initSpot({ toast, goHome }),
+  count: initCount({ toast, goHome })
 };
 
 buildHome();
