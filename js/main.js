@@ -28,27 +28,89 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
   };
 }
 
-/* 홈 화면 목록 = 그대로 콘텐츠 로드맵.
-   ready:false 는 "곧 나와요" 카드로 보인다. */
+/* ── 홈 화면 ──────────────────────────────────────────────
+   활동을 네 갈래로 묶는다. 그룹마다 색이 있고, 그 색이 라벨 점 · 아이콘
+   타일 배경(tint) · 아이콘 선(stroke) · 카드 하단 띠에 함께 쓰인다 —
+   글자를 못 읽는 나이라 "같은 색 = 같은 갈래" 가 유일한 단서다.
+   ready:false 는 "곧 나와요" 그룹으로 내려가 잠긴 카드가 된다. */
+const GROUPS = [
+  { id: 'create', title: '창작',      dot: '#ff8a3d', tint: '#fff0e0', stroke: '#e8762a' },
+  { id: 'write',  title: '쓰기 준비', dot: '#7fd18a', tint: '#e9f7ea', stroke: '#4da55c' },
+  { id: 'think',  title: '생각 놀이', dot: '#7ab8f2', tint: '#e8f1fc', stroke: '#4d84c4' },
+  { id: 'soon',   title: '곧 나와요', dot: '#c9b88f', tint: '#f6efe2', stroke: '#a08b5f' }
+];
+
+/* 아이콘은 이모지가 아니라 인라인 SVG 다. 이모지는 기기마다 그림이 다르고
+   색을 그룹에 맞출 수 없다. 좌표계는 48×48 로 통일. */
+const svg = (inner, color, size = 46, sw = 3) =>
+  `<svg viewBox="0 0 48 48" width="${size}" height="${size}" fill="none" stroke="${color}"` +
+  ` stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+
+/* 글자를 쓰는 코스(한글·숫자·영어)는 "글자 + 연필 + 점선" 으로 통일한다 */
+const glyph = (txt) => (c) => svg(
+  `<text x="18" y="30" font-size="24" font-weight="800" text-anchor="middle"` +
+  ` fill="${c}" stroke="none" font-family="sans-serif">${txt}</text>` +
+  '<path d="M30 38l9-9 4 4-9 9-5 1z"/><path d="M8 41h14" stroke-dasharray="4 4"/>', c);
+
+const ICON = {
+  coloring: (c) => svg('<path d="M37 9c2 2 3 5 1 7L23 31l-6-6L32 10c2-2 3-3 5-1z"/>' +
+                       '<path d="M17 26c-3 1-5 3-6 6-1 3-2 4-4 5 4 2 9 1 12-2 2-2 2-5 1-7z"/>', c),
+  photo:    (c) => svg('<rect x="6" y="15" width="36" height="25" rx="5"/>' +
+                       '<circle cx="24" cy="27" r="7"/><path d="M17 15l3-5h8l3 5"/>', c),
+  trace:    (c) => svg('<path d="M6 32c6-12 12 10 18-2s6-8 18-8" stroke-dasharray="6 5"/>', c),
+  hangul:   glyph('가'),
+  names:    (c) => svg('<rect x="6" y="13" width="36" height="23" rx="6"/>' +
+                       '<circle cx="16" cy="24" r="4"/><path d="M25 20h11M25 28h7"/>', c),
+  number:   glyph('12'),
+  english:  glyph('Ab'),
+  maze:     (c) => svg('<path d="M24 25c0-3 5-3 5 0 0 4-10 4-10 0 0-8 15-8 15 0' +
+                       ' 0 10-20 10-20 0 0-13 25-13 25 0"/>', c),
+  dots:     (c) => svg('<circle cx="10" cy="36" r="3.5"/><circle cx="24" cy="12" r="3.5"/>' +
+                       '<circle cx="38" cy="32" r="3.5"/>' +
+                       '<path d="M12 32l10-16m4 1l10 12" stroke-dasharray="4 4"/>', c),
+  puzzle:   (c) => svg('<path d="M10 15h9a5 5 0 1 1 10 0h9v8a5 5 0 1 0 0 10v8h-9' +
+                       'a5 5 0 1 0-10 0h-9v-8a5 5 0 1 1 0-10z"/>', c),
+  count:    (c) => svg('<circle cx="14" cy="31" r="7"/><circle cx="32" cy="31" r="7"/>' +
+                       '<path d="M14 24v-7m18 7v-7m-18 0c2-2 4-2 6 0m10 0c2-2 4-2 6 0"/>', c),
+  spot:     (c) => svg('<circle cx="20" cy="20" r="11"/><path d="M29 29l11 11"/>', c),
+  sort:     (c) => svg('<rect x="8" y="8" width="13" height="13" rx="3"/>' +
+                       '<circle cx="35" cy="14" r="7"/><path d="M17 40l7-11 7 11z"/>', c)
+};
+
+/* 헤더 아이콘 (26·24px, 선이 굵다) */
+const INK = '#3a2f22';
+const ICON_SOUND = svg('<path d="M8 19v10h7l9 8V11l-9 8H8z"/><path d="M30 18c3 3 3 9 0 12"/>' +
+                       '<path d="M35 14c5 5 5 15 0 20"/>', INK, 26, 3.5);
+const ICON_MUTED = svg('<path d="M8 19v10h7l9 8V11l-9 8H8z"/>' +
+                       '<path d="M31 19l11 11M42 19L31 30"/>', INK, 26, 3.5);
+const ICON_GALLERY = svg('<rect x="5" y="9" width="38" height="30" rx="6"/>' +
+                         '<circle cx="16" cy="19" r="3.5"/><path d="M9 35l9-9 8 8 7-8 10 11"/>',
+                         INK, 24, 3.5);
+
 const ACTIVITIES = [
-  { id: 'coloring', emoji: '🎨', name: '색칠하기',   desc: '펜으로 자유롭게', ready: true },
-  { id: 'trace',    emoji: '✏️', name: '따라 그리기', desc: '점선 따라 쓱쓱', ready: true },
-  { id: 'hangul',   emoji: '🇰🇷', name: '한글 쓰기',   desc: 'ㄱ ㄴ ㄷ 획순', ready: true },
-  { id: 'names',    emoji: '📛', name: '이름 쓰기',   desc: '우리 가족 이름', ready: true },
-  { id: 'number',   emoji: '🔢', name: '숫자 쓰기',   desc: '1부터 100까지', ready: true },
-  { id: 'english',  emoji: '🔤', name: '영어 쓰기',   desc: 'A B C 획순', ready: true },
-  { id: 'maze',     emoji: '🌀', name: '미로 찾기',   desc: '길을 그어 탈출', ready: true },
-  { id: 'dots',     emoji: '🔗', name: '점 잇기',     desc: '이으면 그림이!', ready: true },
-  { id: 'puzzle',   emoji: '🧩', name: '조각 퍼즐',   desc: '맞추면 그림 완성!', ready: true },
-  { id: 'sort',     emoji: '🗂️', name: '모양 분류',   desc: '끌어다 담기' },
-  { id: 'count',    emoji: '🍎', name: '세어보기',    desc: '몇 개일까?', ready: true },
-  { id: 'spot',     emoji: '🔍', name: '다른 그림 찾기', desc: '눈썰미 대결', ready: true }
+  { id: 'coloring', group: 'create', name: '색칠하기',      desc: '펜으로 자유롭게', ready: true },
+  { id: 'photo',    group: 'create', name: '내 사진 색칠',  desc: '내 사진이 밑그림으로', ready: true },
+
+  { id: 'trace',    group: 'write',  name: '따라 그리기',   desc: '점선 따라 쓱쓱', ready: true },
+  { id: 'hangul',   group: 'write',  name: '한글 쓰기',     desc: 'ㄱ ㄴ ㄷ 획순', ready: true },
+  { id: 'names',    group: 'write',  name: '이름 쓰기',     desc: '우리 가족 이름', ready: true },
+  { id: 'number',   group: 'write',  name: '숫자 쓰기',     desc: '1부터 100까지', ready: true },
+  { id: 'english',  group: 'write',  name: '영어 쓰기',     desc: 'A B C 획순', ready: true },
+
+  { id: 'maze',     group: 'think',  name: '미로 찾기',     desc: '길을 그어 탈출', ready: true },
+  { id: 'dots',     group: 'think',  name: '점 잇기',       desc: '이으면 그림이!', ready: true },
+  { id: 'puzzle',   group: 'think',  name: '조각 퍼즐',     desc: '맞추면 그림 완성!', ready: true },
+  { id: 'count',    group: 'think',  name: '세어보기',      desc: '몇 개일까?', ready: true },
+  { id: 'spot',     group: 'think',  name: '다른 그림 찾기', desc: '눈썰미 대결', ready: true },
+
+  { id: 'sort',     group: 'soon',   name: '모양 분류',     desc: '끌어다 담기' }
 ];
 
 /* ── 화면 전환 ─────────────────────────────────────────────
    따라 그리기류 다섯(선 긋기·한글·숫자·미로·점 잇기)은 화면이 같아서
    #screen-trace 하나를 공유한다. 러너가 코스만 갈아 끼운다. */
-const SCREEN_OF = { coloring: 'coloring', trace: 'trace', hangul: 'trace', english: 'trace',
+const SCREEN_OF = { coloring: 'coloring', photo: 'coloring',
+                    trace: 'trace', hangul: 'trace', english: 'trace',
                     names: 'trace',
                     number: 'trace', maze: 'trace', dots: 'trace', puzzle: 'puzzle',
                     spot: 'spot', count: 'count' };
@@ -70,24 +132,42 @@ function toast(msg) {
 
 /* ── 홈 ──────────────────────────────────────────────────── */
 function buildHome() {
-  const grid = $('activity-grid');
-  grid.innerHTML = '';
-  for (const a of ACTIVITIES) {
-    const card = document.createElement('button');
-    card.type = 'button';
-    card.className = 'card' + (a.ready ? '' : ' locked');
-    card.innerHTML = `
-      <span class="emoji">${a.emoji}</span>
-      <span class="name">${a.name}</span>
-      <span class="desc">${a.desc}</span>
-      ${a.ready ? '' : '<span class="badge">곧 나와요</span>'}`;
-    card.addEventListener('click', () => {
-      if (!a.ready) { toast('아직 준비 중이에요 🙂'); return; }
-      sfx.tap();
-      show(a.id);
-      ACTIVITY_APPS[a.id].enter(a.id);
-    });
-    grid.appendChild(card);
+  const wrap = $('activity-groups');
+  wrap.innerHTML = '';
+  for (const g of GROUPS) {
+    const items = ACTIVITIES.filter(a => a.group === g.id);
+    if (!items.length) continue;
+
+    const box = document.createElement('div');
+    box.className = 'group';
+    box.innerHTML =
+      `<div class="group-label">
+         <span class="group-dot" style="background:${g.dot}"></span>
+         <span class="group-name">${g.title}</span>
+       </div>`;
+
+    const grid = document.createElement('div');
+    grid.className = 'group-grid';
+    for (const a of items) {
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'card' + (a.ready ? '' : ' locked');
+      card.innerHTML = `
+        <span class="tile" style="background:${g.tint}">${(ICON[a.id] || ICON.sort)(g.stroke)}</span>
+        <span class="name">${a.name}</span>
+        <span class="desc">${a.desc}</span>
+        ${a.ready ? '' : '<span class="badge">곧 나와요</span>'}
+        <i class="bar" style="background:${g.dot}"></i>`;
+      card.addEventListener('click', () => {
+        if (!a.ready) { toast('아직 준비 중이에요'); return; }
+        sfx.tap();
+        show(a.id);
+        ACTIVITY_APPS[a.id].enter(a.id);
+      });
+      grid.appendChild(card);
+    }
+    box.appendChild(grid);
+    wrap.appendChild(box);
   }
 }
 
@@ -142,7 +222,7 @@ const goHome = () => show('home');
 const coloring = initColoring({ toast, goHome });
 const practice = initPractice({ toast, goHome });
 const ACTIVITY_APPS = {
-  coloring,
+  coloring, photo: coloring,
   trace: practice, hangul: practice, number: practice, maze: practice, dots: practice,
   english: practice, names: practice,
   puzzle: initPuzzle({ toast, goHome }),
@@ -155,9 +235,10 @@ buildHome();
    아이가 눌러도 되돌릴 수 있는 동작이라 잠글 이유가 없다. */
 function paintSoundBtn() {
   const b = $('btn-sound');
-  b.textContent = isMuted() ? '🔇' : '🔊';
+  b.innerHTML = isMuted() ? ICON_MUTED : ICON_SOUND;
   b.classList.toggle('is-off', isMuted());
 }
+$('btn-gallery').innerHTML = ICON_GALLERY + '내 그림';
 paintSoundBtn();
 $('btn-sound').addEventListener('click', () => {
   setMuted(!isMuted());

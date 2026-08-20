@@ -689,15 +689,24 @@ export function initColoring({ toast, goHome }) {
   return {
     /** 색칠 화면을 열 때 호출 — 그림을 무작위로 하나 펼쳐 준다.
         같은 그림이 연달아 나오지 않게 직전 그림만 피한다.
-        그리다 만 그림(draft)은 페이지별로 저장돼 있어 잃지 않는다. */
-    enter() {
+        그리다 만 그림(draft)은 페이지별로 저장돼 있어 잃지 않는다.
+
+        mode 'photo' 는 홈의 "내 사진 색칠" 카드로 들어온 경우다.
+        찍어 둔 사진 밑그림이 있으면 그중 하나를 펼치고, 하나도 없으면
+        그림 고르기 시트를 열어 준다 — 거기 📷 로 사진을 추가한다. */
+    enter(mode) {
       refreshLinework().finally(() => {
-        const pool = allPages();
+        const photo = mode === 'photo';
+        const pool = photo && photoPages.length ? photoPages : allPages();
         const last = localStorage.getItem('lastPage');
         let pick = pool[(Math.random() * pool.length) | 0];
         if (pool.length > 1 && pick.id === last)
           pick = pool[(pool.findIndex(p => p.id === pick.id) + 1) % pool.length];
         openPage(pick.id);
+        if (photo && !photoPages.length) {
+          buildPageSheet();
+          $('sheet-pages').hidden = false;
+        }
       });
     }
   };

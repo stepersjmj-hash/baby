@@ -7,8 +7,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="아이놀이">
-<title>아이놀이 · 색칠하기</title>
+<meta name="apple-mobile-web-app-title" content="하이츄">
+<title>하이츄 — 하이의 놀이터</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="assets/icon-180.png">
 <link rel="icon" href="assets/icon-192.png">
@@ -19,12 +19,16 @@
 <!-- ───────────────────────── 홈 ───────────────────────── -->
 <section id="screen-home" class="screen is-active">
   <header class="home-head">
-    <h1>무엇을 하고 놀까?</h1>
-    <button id="btn-sound" class="chip chip-icon" type="button" aria-label="소리 켜기/끄기">🔊</button>
-    <button id="btn-gallery" class="chip" type="button">🖼️ 내 그림</button>
+    <div class="home-title">
+      <h1>무엇을 하고 놀까?</h1>
+      <span class="home-sub">오늘도 재미있게 놀아 보자!</span>
+    </div>
+    <!-- 아이콘은 js/main.js 가 인라인 SVG 로 채운다 (이모지를 쓰지 않는다) -->
+    <button id="btn-sound" class="home-btn" type="button" aria-label="소리 켜기/끄기"></button>
+    <button id="btn-gallery" class="home-btn is-pill" type="button"></button>
   </header>
 
-  <div id="activity-grid" class="grid"></div>
+  <div id="activity-groups" class="groups"></div>
 
   <footer class="home-foot">
     <span id="install-hint" class="hint"></span>

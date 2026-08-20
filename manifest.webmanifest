@@ -1,6 +1,6 @@
 {
-  "name": "아이놀이 — 색칠하고 그리기",
-  "short_name": "아이놀이",
+  "name": "하이츄 — 하이의 놀이터",
+  "short_name": "하이츄",
   "description": "3~6세 아이를 위한 펜 놀이 앱",
   "start_url": "./index.html",
   "scope": "./",
