@@ -28,9 +28,18 @@ const PARAM = {
   3: { min: 4, max: 9, size: 74 }
 };
 
+/* 받침이 있으면 '이', 없으면 '가'.
+   조사를 손으로 쓰면 "별가 몇 개일까?" 같은 게 나온다 — 실제로 나왔고
+   음성 클립까지 그대로 녹음됐다. 이름만 넣으면 되게 계산해 준다. */
+const josa = (word) => {
+  const c = word.charCodeAt(word.length - 1) - 0xac00;
+  return (c >= 0 && c < 11172 && c % 28 !== 0) ? '이' : '가';
+};
+
 const L = (id, name, ico, hard, seed, decoys = []) =>
   ({ id, name, ico, hard, seed, decoys,
-     ask: hard === 3 ? `${name} 세어 보자!` : `${name}가 몇 개일까?` });
+     // 상 난이도의 name 은 '사과만' 처럼 이미 '만' 으로 끝나 조사가 필요 없다
+     ask: hard === 3 ? `${name} 세어 보자!` : `${name}${josa(name)} 몇 개일까?` });
 
 export const LEVELS = [
   /* 하 */

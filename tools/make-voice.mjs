@@ -64,7 +64,7 @@ const jobs = [
    유나 대신 그 소리로 변환해 쓴다. 파일명은 문구 그대로면 된다:
      기역.wav · 주하이.wav · 사과가 몇 개일까.wav · en-A.wav
    (특수문자·공백은 알아서 맞춰 본다) */
-import { readdirSync, statSync } from 'node:fs';
+import { readdirSync } from 'node:fs';
 const SRC = join(ROOT, 'assets', 'voice-src');
 const overrides = new Map();
 if (existsSync(SRC))
@@ -82,11 +82,15 @@ for (const { text, lang, voice } of jobs) {
   manifest[`${lang}|${text}`] = file;
   const out = join(OUT, file);
   const ov = overrides.get(base);
-  if (ov) {                                   // 교체 파일이 더 새로우면 변환해 덮어쓴다
-    if (!existsSync(out) || statSync(ov).mtimeMs > statSync(out).mtimeMs || FORCE) {
-      execFileSync('afconvert', ['-f', 'm4af', '-d', 'aac', '-b', '64000', ov, out]);
-      swapped++;
-    } else kept++;
+  if (ov) {
+    /* 교체 파일이 있으면 **언제나** 변환해 덮어쓴다.
+       예전엔 "wav 가 m4a 보다 최신일 때만" 바꿨는데, 그러면 문구를 고쳐
+       유나로 새 클립을 만든 직후에 좋은 목소리 wav 를 넣으면 m4a 가 더
+       최신이라 영영 안 바뀐다 (실제로 겪었다 — "넣었는데 왜 그대로지").
+       afconvert 는 같은 입력에 같은 바이트를 내므로 다시 돌려도
+       git 이 지저분해지지 않는다. */
+    execFileSync('afconvert', ['-f', 'm4af', '-d', 'aac', '-b', '64000', ov, out]);
+    swapped++;
     continue;
   }
   if (!FORCE && existsSync(out)) { kept++; continue; }
@@ -98,7 +102,20 @@ for (const { text, lang, voice } of jobs) {
   made++;
 }
 writeFileSync(join(OUT, 'manifest.json'), JSON.stringify(manifest, null, 1));
+
+/* 문구가 바뀌면 옛 클립이 고아로 남는다 (조사를 고쳤더니 별가.m4a 가
+   그랬다). 매니페스트가 안 가리키는 클립은 지운다 — 안 그러면 저장소에
+   영영 쌓이고, 어느 게 진짜인지 알 수 없게 된다. */
+/* ★ 파일명은 반드시 NFC 로 맞춰 비교한다. macOS 는 한글 파일명을 자소
+   분해(NFD)로 돌려줄 때가 있어서, 그냥 비교하면 멀쩡히 쓰는 클립을
+   고아로 오인해 지운다 (공-세-개.m4a 가 그렇게 지워졌다). */
+const alive = new Set(Object.values(manifest).map(f => f.normalize('NFC')));
+const orphans = readdirSync(OUT)
+  .filter(f => f.endsWith('.m4a') && !alive.has(f.normalize('NFC')));
+for (const f of orphans) rmSync(join(OUT, f), { force: true });
+
 console.log(`클립 ${made}개 생성, 교체 ${swapped}개, ${kept}개 유지, 총 ${jobs.length}개 → assets/voice/`);
+if (orphans.length) console.log(`🗑 안 쓰는 클립 ${orphans.length}개 삭제: ${orphans.join(', ')}`);
 if (overrides.size) {
   const used = [...overrides.keys()].filter(k => jobs.some(j => slug(j.text, j.lang) === k));
   const unused = [...overrides.keys()].filter(k => !used.includes(k));

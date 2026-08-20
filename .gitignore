@@ -1,2 +1,5 @@
 # 음성 교체 원본 (변환 결과만 커밋한다)
 assets/voice-src/
+
+# 맥 파인더 찌꺼기
+.DS_Store
