@@ -181,6 +181,15 @@ if (!window.matchMedia('(display-mode: standalone)').matches && !navigator.stand
     '공유 버튼 → "홈 화면에 추가" 하면 전체 화면 앱처럼 쓸 수 있어요';
 }
 
+// 지금 화면이 어느 버전인지 홈 구석에 찍는다 — "반영된 거야?" 를 눈으로 확인
+fetch('sw.js').then(r => r.text()).then(t => {
+  const m = /VERSION = '([^']+)'/.exec(t);
+  if (m) $('install-hint').textContent += ($('install-hint').textContent ? ' · ' : '') + m[1];
+}).catch(() => {});
+
+// 음소거 상태로 시작하면 조용한 이유를 화면이 직접 알린다
+if (isMuted()) toast('소리가 꺼져 있어요 — 오른쪽 위 🔇 를 누르면 켜져요');
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').catch(() => {});

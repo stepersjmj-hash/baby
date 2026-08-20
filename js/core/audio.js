@@ -64,12 +64,22 @@ function silenceURL() {
   return URL.createObjectURL(new Blob([b.buffer], { type: 'audio/wav' }));
 }
 
+let kickStarted = false;
 function sessionKick() {
   try {
     if (!kickEl) {
       kickEl = new Audio(silenceURL());
       kickEl.loop = true;
       kickEl.setAttribute('playsinline', '');
+      // 킥이 '처음으로' 실제 재생되는 순간: 그 전에 만들어진 컨텍스트는
+      // 오염된 세션에서 태어나 킥이 돌아도 무음일 수 있다 — 새로 판다.
+      // (pointerdown 은 재생 제스처가 아니라서, 첫 획을 긋는 동안 만들어진
+      // 컨텍스트가 정확히 이 처지가 된다.)
+      kickEl.addEventListener('playing', () => {
+        if (kickStarted) return;
+        kickStarted = true;
+        if (ctx) resetAudio();
+      });
     }
     if (kickEl.paused) kickEl.play().catch(() => { /* 제스처 밖이면 다음 기회에 */ });
   } catch { /* Audio 없는 환경 */ }
@@ -214,19 +224,23 @@ export function voice(name) {
     /** @param speed 0~1 로 정규화한 긋는 속도 @param pressure 필압 0~1 */
     move(speed = 0.5, pressure = 0.6) {
       if (!alive) return;
-      const t = a.currentTime;
-      const s = Math.min(1, Math.max(0, speed));
-      const lvl = spec.gain * (0.22 + 0.78 * s) * (0.55 + 0.45 * pressure);
-      g.gain.setTargetAtTime(Math.max(0.0001, lvl), t, 0.03);
-      tuned.setTargetAtTime(Math.max(60, spec.freq + spec.wobble * (s - 0.5)), t, 0.05);
+      try {
+        const t = a.currentTime;
+        const s = Math.min(1, Math.max(0, speed));
+        const lvl = spec.gain * (0.22 + 0.78 * s) * (0.55 + 0.45 * pressure);
+        g.gain.setTargetAtTime(Math.max(0.0001, lvl), t, 0.03);
+        tuned.setTargetAtTime(Math.max(60, spec.freq + spec.wobble * (s - 0.5)), t, 0.05);
+      } catch { alive = false; /* 획 도중 resetAudio 로 컨텍스트가 닫혔다 */ }
     },
     stop() {
       if (!alive) return;
       alive = false;
-      const t = a.currentTime;
-      g.gain.cancelScheduledValues(t);
-      g.gain.setTargetAtTime(0.0001, t, 0.035);
-      try { src.stop(t + 0.3); } catch { /* 이미 멈췄다 */ }
+      try {
+        const t = a.currentTime;
+        g.gain.cancelScheduledValues(t);
+        g.gain.setTargetAtTime(0.0001, t, 0.035);
+        src.stop(t + 0.3);
+      } catch { /* 이미 멈췄거나 컨텍스트가 닫혔다 */ }
     }
   };
 }
