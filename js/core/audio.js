@@ -79,6 +79,16 @@ function sessionKick() {
    컨텍스트는 샘플레이트(24kHz)까지 물려받아 계속 이상하다. */
 export function unlock() { sessionKick(); ac(); }
 
+/* 킥은 '진짜 제스처'(click·touchend·pointerup)에서만 재생이 허용된다 —
+   구형 iPadOS 는 pointerdown 을 미디어 재생 제스처로 안 쳐 준다.
+   (진단 페이지의 click 버튼에선 나는데 앱에선 무음이던 원인.)
+   그래서 화면 아무 데나 탭할 때마다 킥이 살아 있는지 확인한다.
+   킥이 이미 돌고 있으면 paused 검사 한 번이라 비용은 없다. */
+if (typeof window !== 'undefined') {
+  for (const ev of ['click', 'touchend', 'pointerup'])
+    window.addEventListener(ev, () => unlock(), { capture: true, passive: true });
+}
+
 /** 진단·구급용: 컨텍스트를 버리고 새로 만든다 (좀비 세션 탈출) */
 export function resetAudio() {
   try { ctx && ctx.close(); } catch { /* 이미 닫혔다 */ }

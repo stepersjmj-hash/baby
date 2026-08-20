@@ -304,6 +304,10 @@ iOS TTS 의 터치 제약을 받지 않고, 음소거(master)도 그대로 탄�
   (24kHz)까지 이상해진다.
 - 구급 수단: `resetAudio()` (컨텍스트 재생성), `enableSink()` (WebAudio
   출력을 MediaStream → `<audio>` 로 우회).
+- **pointerdown 은 미디어 재생 제스처가 아니다** (구형 iPadOS). `<audio>`
+  킥은 click·touchend·pointerup 에서만 재생된다 — audio.js 가 창 전역에서
+  이 세 이벤트마다 `unlock()` 을 부르는 이유. once 로 한 번만 걸면
+  첫 시도가 거부됐을 때 영영 무음이 된다.
 - **원인 추적은 `tools/ios-check.html`** — 아이패드에서 열면 자동 검사에
   버튼 5개(효과음/TTS/재생성/일반오디오/우회로)와 출력 미터가 있다.
   미터가 뛰는데 무음이면 세션·기기 쪽, 미터가 0 이면 코드 쪽.
