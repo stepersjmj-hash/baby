@@ -27,8 +27,8 @@
       byHard[L.hard]++; ids.add(L.id);
       if (L.diffs.length !== want[L.hard]) bad++;
     }
-    const ok = SPOTS.length === 9 && byHard[1] === 3 && byHard[2] === 3 && byHard[3] === 3
-               && ids.size === 9 && !bad;
+    const ok = SPOTS.length === 24 && byHard[1] === 8 && byHard[2] === 8 && byHard[3] === 8
+               && ids.size === 24 && !bad;
     log.push(`구성: ${SPOTS.length}문제 (하${byHard[1]} 중${byHard[2]} 상${byHard[3]}) ${ok ? 'OK' : 'FAIL'}`);
   }
 
@@ -66,12 +66,12 @@
       }
       if (!sp.solved) bad.push(L.id + ':미완');
     }
-    log.push(`${HARD[hard]} 3문제:  ${bad.length ? 'FAIL → ' + [...new Set(bad)].slice(0, 3).join(' ') : 'OK'}`);
+    log.push(`${HARD[hard]} 8문제:  ${bad.length ? 'FAIL → ' + [...new Set(bad)].slice(0, 3).join(' ') : 'OK'}`);
   }
 
   // 3) 화면 전체를 마구 문질러도 한 획에 하나만 인정된다
   {
-    const b = buildSpot(SPOTS[8]);
+    const b = buildSpot(SPOTS[16]);
     const sp = createSpot(b.diffs);
     const scribble = [];
     for (let y = 20; y < 540; y += 24)
