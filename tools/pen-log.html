@@ -61,6 +61,16 @@
 
 <script>
 const $ = (id) => document.getElementById(id);
+
+/* 어떤 오류든 화면에 그대로 보여 준다 — 콘솔을 못 여는 아이패드용 */
+window.addEventListener('error', (e) => {
+  const el = $('tts-stat');
+  if (el) el.textContent = '⛔ 오류: ' + (e.message || e.type) + ' @' + (e.filename || '').split('/').pop() + ':' + (e.lineno || '');
+});
+window.addEventListener('unhandledrejection', (e) => {
+  const el = $('tts-stat');
+  if (el) el.textContent = '⛔ 프라미스 오류: ' + (e.reason?.message || e.reason);
+});
 const pad = $('pad'), cv = $('cv'), ctx = cv.getContext('2d');
 const logEl = $('log');
 
@@ -292,16 +302,22 @@ $('b-log').addEventListener('click', () => { logEl.hidden = !logEl.hidden; if (!
   // 미리 불러 두는 이유: 버튼 안에서 import 를 기다리면 speak 이
   // 제스처 밖으로 밀려나 iOS 의 첫-speak 잠금에 걸린다 — 그게 바로
   // 이 페이지로 잡아낸 버그다. 클릭 시점엔 동기로만 부른다.
-  let appAudio = null;
-  import('../js/core/audio.js?t=' + Date.now()).then(A => { appAudio = A; }).catch(() => {});
+  let appAudio = null, appAudioErr = null;
+  import('../js/core/audio.js?t=' + Date.now())
+    .then(A => { appAudio = A; })
+    .catch(e => { appAudioErr = e; });
+  // 앱 소리 종합 시험: ① 딸깍(효과음) ② 팡파르 ③ "기역"(음성 클립)
+  // 셋 중 무엇이 들리고 안 들리는지가 곧 진단이다.
   $('b-tts4').addEventListener('click', () => {
+    if (appAudioErr) { stat('⛔ 오디오 모듈 로딩 실패: ' + (appAudioErr.message || appAudioErr)); return; }
     if (!appAudio) { stat('앱 경로: 모듈 로딩 중 — 한 번 더 누르세요'); return; }
     appAudio.unlock();
-    if (appAudio.isMuted()) { stat('앱 경로: 음소거 🔇 상태라 안 읽음! (홈의 🔊 를 누를 것)'); return; }
-    stat('앱 경로: say("기역") 호출함 — 소리가 나는지 들어 보세요');
-    appAudio.say('기역');
-    setTimeout(() => appAudio.say('사십'), 1600);
-    setTimeout(() => appAudio.say('B', 'en-US'), 3200);
+    if (appAudio.isMuted()) { stat('앱 경로: 음소거 🔇 상태라 안 남! (홈의 🔊 를 누를 것)'); return; }
+    const st = appAudio.audioState?.() ?? {};
+    stat(`① 딸깍 ② 팡파르 ③ 기역 순서로 납니다 · 상태 ${JSON.stringify(st)}`);
+    appAudio.sfx.tap();
+    setTimeout(() => appAudio.sfx.cheer('trace'), 900);
+    setTimeout(() => appAudio.say('기역'), 2400);
   });
 })();
 

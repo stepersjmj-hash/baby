@@ -30,6 +30,7 @@ const MIME = {
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
   '.gif': 'image/gif', '.svg': 'image/svg+xml', '.ico': 'image/x-icon',
   '.woff2': 'font/woff2', '.mp3': 'audio/mpeg', '.wav': 'audio/wav',
+  '.m4a': 'audio/mp4',
   '.txt': 'text/plain; charset=utf-8', '.md': 'text/plain; charset=utf-8'
 };
 
@@ -45,11 +46,28 @@ http.createServer((req, res) => {
 
   fs.readFile(file, (err, buf) => {
     if (err) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }).end('없는 파일: ' + rel); return; }
-    res.writeHead(200, {
+    const head = {
       'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
       'Cache-Control': 'no-store, must-revalidate',
-      'Service-Worker-Allowed': '/'
-    });
+      'Service-Worker-Allowed': '/',
+      // iOS 의 <audio>/<video> 는 Range(206) 를 못 주는 서버의 미디어를
+      // 재생 거부한다 (오류 4). 아이패드에서만 소리 파일이 죽는 원인.
+      'Accept-Ranges': 'bytes'
+    };
+    const m = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
+    if (m && (m[1] || m[2])) {
+      const start = m[1] ? Number(m[1]) : Math.max(0, buf.length - Number(m[2]));
+      const end = (m[1] && m[2]) ? Math.min(Number(m[2]), buf.length - 1) : buf.length - 1;
+      if (start >= buf.length || start > end) {
+        res.writeHead(416, { 'Content-Range': `bytes */${buf.length}` }).end();
+        return;
+      }
+      head['Content-Range'] = `bytes ${start}-${end}/${buf.length}`;
+      res.writeHead(206, head);
+      res.end(buf.subarray(start, end + 1));
+      return;
+    }
+    res.writeHead(200, head);
     res.end(buf);
   });
 }).listen(PORT, '0.0.0.0', () => {

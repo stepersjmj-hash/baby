@@ -26,7 +26,9 @@ function ac() {
     master.gain.value = 0.85;
     master.connect(ctx.destination);
   }
-  if (ctx && ctx.state === 'suspended') ctx.resume();
+  // iOS 는 전화·시리·백그라운드 뒤에 'interrupted' 라는 비표준 상태로
+  // 멈춰 있기도 한다 — 'suspended' 만 보면 영영 안 깨어난다.
+  if (ctx && ctx.state !== 'running') ctx.resume();
   return ctx;
 }
 
@@ -39,7 +41,72 @@ function noise(a) {
   return noiseBuf;
 }
 
-export function unlock() { ac(); }
+/* ── iOS 좀비 세션 되살리기 ──────────────────────────────
+   TTS·시리·전화가 오디오 세션을 바꿔 놓으면 AudioContext 가
+   running 이라면서도 하드웨어로는 안 나간다 (아이패드 실측:
+   출력 레벨은 뛰는데 스피커는 무음). <audio> 로 무음 파일을
+   제스처에서 틀면 세션이 '재생' 등급으로 올라가 되살아난다
+   (unmute.js 기법). 무음이라 들리는 건 없다. */
+let kickEl = null;
+
+/* 무음 WAV 를 그 자리에서 합성해 blob 으로 문다.
+   파일로 두면 안 되는 이유: iOS 의 <audio> 는 서버가 Range(206)를
+   지원하지 않으면 재생을 거부한다 (오류 4) — 개발용 단순 서버에서
+   아이패드만 무음 킥이 통째로 죽었다. blob 은 HTTP 를 안 탄다. */
+function silenceURL() {
+  const sr = 8000, n = sr / 4, size = 44 + n * 2;   // 0.25초 무음
+  const b = new DataView(new ArrayBuffer(size));
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) b.setUint8(o + i, s.charCodeAt(i)); };
+  w(0, 'RIFF'); b.setUint32(4, size - 8, true); w(8, 'WAVE');
+  w(12, 'fmt '); b.setUint32(16, 16, true); b.setUint16(20, 1, true); b.setUint16(22, 1, true);
+  b.setUint32(24, sr, true); b.setUint32(28, sr * 2, true); b.setUint16(32, 2, true); b.setUint16(34, 16, true);
+  w(36, 'data'); b.setUint32(40, n * 2, true);
+  return URL.createObjectURL(new Blob([b.buffer], { type: 'audio/wav' }));
+}
+
+function sessionKick() {
+  try {
+    if (!kickEl) {
+      kickEl = new Audio(silenceURL());
+      kickEl.loop = true;
+      kickEl.setAttribute('playsinline', '');
+    }
+    if (kickEl.paused) kickEl.play().catch(() => { /* 제스처 밖이면 다음 기회에 */ });
+  } catch { /* Audio 없는 환경 */ }
+}
+
+/* 킥을 먼저 틀고 컨텍스트를 만든다 — 세션이 오염된 채로 만든
+   컨텍스트는 샘플레이트(24kHz)까지 물려받아 계속 이상하다. */
+export function unlock() { sessionKick(); ac(); }
+
+/** 진단·구급용: 컨텍스트를 버리고 새로 만든다 (좀비 세션 탈출) */
+export function resetAudio() {
+  try { ctx && ctx.close(); } catch { /* 이미 닫혔다 */ }
+  ctx = null; master = null; noiseBuf = null; sinkEl = null;
+  clipBufs.clear();
+  unlock();
+}
+
+/* ── 최후 우회로: WebAudio 출력을 <audio> 로 돌린다 ─────────
+   기기에 따라 WebAudio 의 destination 만 죽고 <audio> 재생은
+   멀쩡한 경우가 있다. master 를 MediaStream 으로 뽑아 <audio>
+   에 물리면 효과음이 미디어 재생 통로로 나간다. */
+let sinkEl = null;
+export function enableSink() {
+  const a = ac();
+  if (!a) return false;
+  if (sinkEl) return true;
+  try {
+    const d = a.createMediaStreamDestination();
+    master.disconnect();
+    master.connect(d);
+    sinkEl = new Audio();
+    sinkEl.srcObject = d.stream;
+    sinkEl.setAttribute('playsinline', '');
+    sinkEl.play().catch(() => { /* 제스처 밖 */ });
+    return true;
+  } catch { return false; }
+}
 export function setMuted(v) { muted = v; localStorage.setItem('sfx', v ? 'off' : 'on'); }
 export function isMuted() { return muted; }
 
@@ -202,7 +269,108 @@ const CHEER = {
    글자·숫자를 다 쓰면 이름을 읽어 준다. 음원 파일 없이 기기 내장
    TTS(speechSynthesis)를 쓴다 — iOS 에 한국어·영어 목소리가 있다.
    음소거(🔊)를 켜면 이것도 조용해진다. */
+/* ── 음성 팩 ─────────────────────────────────────────────
+   assets/voice/ 에 미리 만든 클립(m4a·wav)이 있으면 TTS 대신 재생한다.
+   tools/make-voice.mjs 가 유나 음성으로 전부 만들어 두고, 더 좋은
+   음성으로 바꾸려면 TTS 사이트에서 받은 파일을 assets/voice-src/ 에
+   문구 이름으로 넣고 생성기를 다시 돌리면 된다.
+   클립 재생은 WebAudio 라 iOS TTS 의 터치 제약도 받지 않는다. */
+let pack = null;
+fetch(new URL('../../assets/voice/manifest.json', import.meta.url))
+  .then(r => (r.ok ? r.json() : null))
+  .then(m => { pack = m; })
+  .catch(() => { /* 팩이 없으면 TTS 만 쓴다 */ });
+const clipBufs = new Map();
+let clipPlaying = null;
+
+async function playClip(file) {
+  const a = ac();
+  if (!a) return false;
+  try {
+    let buf = clipBufs.get(file);
+    if (!buf) {
+      const res = await fetch(new URL('../../assets/voice/' + file, import.meta.url));
+      if (!res.ok) return false;
+      buf = await a.decodeAudioData(await res.arrayBuffer());
+      clipBufs.set(file, buf);
+    }
+    try { clipPlaying?.stop(); } catch { /* 이미 끝났다 */ }
+    const src = a.createBufferSource();
+    src.buffer = buf;
+    src.connect(master);
+    src.start();
+    clipPlaying = src;
+    return true;
+  } catch { return false; }
+}
+
 let lastUtter = null;      // iOS 는 utterance 를 붙잡아 두지 않으면 GC 돼서 소리가 안 난다
+
+/* ── 제일 좋은 목소리 고르기 ─────────────────────────────────
+   lang 만 주면 iOS 가 압축(기계음) 음성을 쓴다. 기기에 향상/프리미엄
+   음성이 설치돼 있으면 그걸 고른다 (설정 → 손쉬운 사용 → 콘텐츠 말하기
+   → 음성 → 한국어에서 다운로드). 목록은 늦게 채워지므로 캐시하고
+   voiceschanged 에서 비운다. */
+const voiceCache = new Map();
+try {
+  speechSynthesis.addEventListener?.('voiceschanged', () => voiceCache.clear());
+} catch { /* speechSynthesis 없는 환경 */ }
+
+function bestVoice(lang) {
+  if (voiceCache.has(lang)) return voiceCache.get(lang);
+  let pick = null;
+  try {
+    const pre = lang.slice(0, 2).toLowerCase();
+    const cands = speechSynthesis.getVoices()
+      .filter(v => (v.lang || '').replace('_', '-').toLowerCase().startsWith(pre))
+      // iOS 는 Siri 음성을 목록에 주지만 Web Speech 로 쓰면 소리 없이
+      // 삼켜진다 (알려진 버그) — 절대 고르면 안 된다.
+      .filter(v => !/siri|시리/i.test(v.name));
+    const score = (v) => {
+      const n = v.name.toLowerCase();
+      return (/premium|프리미엄/.test(n) ? 40 : 0) +
+             (/enhanced|향상/.test(n) ? 30 : 0) +
+             (/yuna|유나|seoyeon|서연|samantha/.test(n) ? 5 : 0) +
+             (v.localService ? 2 : 0);
+    };
+    cands.sort((x, y) => score(y) - score(x));
+    pick = cands[0] ?? null;
+  } catch { /* 무시 */ }
+  if (pick) voiceCache.set(lang, pick);   // 빈 목록일 땐 캐시하지 않는다 (늦게 채워짐)
+  return pick;
+}
+
+/** 진단용: 지금 이 언어로 말하면 어떤 목소리가 쓰이는지 */
+export function voiceInfo(lang = 'ko-KR') {
+  const v = bestVoice(lang);
+  return v ? v.name : '(기본)';
+}
+
+/** 진단용: master 출력에 붙인 분석기 — 화면에 레벨 미터를 그릴 때 쓴다.
+    미터가 움직이는데 안 들리면 기기 쪽(무음 모드·볼륨), 안 움직이면 코드 쪽. */
+export function analyser() {
+  const a = ac();
+  if (!a) return null;
+  const an = a.createAnalyser();
+  an.fftSize = 256;
+  master.connect(an);
+  return an;
+}
+
+/** 진단용: 오디오 상태 요약 */
+export function audioState() {
+  return {
+    컨텍스트: ctx ? ctx.state : '아직 안 만듦',
+    샘플레이트: ctx ? ctx.sampleRate : 0,        // 44100/48000 정상 · 24000 은 세션 오염
+    음소거: muted,
+    팩: pack ? Object.keys(pack).length + '문구' : '없음(로딩 중이거나 실패)',
+    킥: kickEl
+      ? (kickEl.error ? '오류 ' + kickEl.error.code
+         : kickEl.paused ? '멈춤' : '재생 중 ' + kickEl.currentTime.toFixed(1) + 's')
+      : '아직',
+    싱크: sinkEl ? (sinkEl.paused ? '멈춤' : '켜짐') : '꺼짐'
+  };
+}
 
 /* 아이패드에서 안 읽히는 문제를 쫓으며 배운 것: 꾸미지 말 것.
    cancel·rate·pitch·suspend 같은 손질이 하나씩 iOS 의 함정을 밟았다.
@@ -210,10 +378,22 @@ let lastUtter = null;      // iOS 는 utterance 를 붙잡아 두지 않으면 G
    삼켜지고, 빈 발화 잠금 해제는 큐를 어지럽혔다.)
    진단 페이지에서 검증된 "resume + speak" 그대로만 쓴다. */
 export function say(text, lang = 'ko-KR') {
+  if (muted) return;
+  const file = pack?.[lang + '|' + text];
+  if (file) {                                  // 클립 우선, 실패하면 TTS 로
+    playClip(file).then(ok => { if (!ok) ttsSay(text, lang); });
+    return;
+  }
+  ttsSay(text, lang);
+}
+
+function ttsSay(text, lang) {
   if (muted || !('speechSynthesis' in window)) return;
   try {
     const u = new SpeechSynthesisUtterance(text);
     u.lang = lang;
+    const v = bestVoice(lang);
+    if (v) u.voice = v;                        // 향상/프리미엄 음성이 있으면 그걸로
     lastUtter = u;
     speechSynthesis.resume();
     speechSynthesis.speak(u);

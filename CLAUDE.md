@@ -55,14 +55,18 @@ js/
     scenes.js             장면 8종(우리 집·바닷속·밤하늘·농장·놀이터·생일·기차·겨울) × 난이도 3 = 24문제
     judge.js              동그라미/콕 찍기 판정 — 화면과 자가 점검이 같이 쓴다
 assets/icon-*.png         tools/make-icons.mjs 로 생성 (직접 편집하지 말 것)
+assets/voice/             음성 팩 (클립 144개 + manifest) — make-voice.mjs 로 생성
 tools/serve.mjs           개발용 정적 서버 (윈도우/맥 공통, LAN 주소 출력)
 tools/make-icons.mjs      아이콘 생성기 (외부 패키지 없이 PNG 직접 인코딩)
+tools/make-voice.mjs      음성 팩 생성기 (맥 전용 — 유나 합성 + voice-src 교체 변환)
 tools/selftest.js         색칠하기 자가 점검 (브라우저 콘솔에 붙여넣기)
 tools/selftest-trace.js   따라 그리기류 7코스 자가 점검 (진행 기록을 건드리지 않는다)
 tools/selftest-puzzle.js  조각 퍼즐 자가 점검 (위와 같음)
 tools/selftest-spot.js    다른 그림 찾기 자가 점검 (위와 같음)
 tools/selftest-count.js   세어보기 자가 점검 (위와 같음)
 tools/pen-log.html        펜 입력 진단 — 앱 로직 없이 받은 좌표만 그대로 잇는다
+tools/ios-check.html      소리 종합 점검 — 아이패드에서 열면 모듈·팩·상태를 자동 검사,
+                          버튼으로 효과음/클립/TTS/일반오디오/우회로를 각각 시험 + 출력 미터
 docs/기획.md              콘텐츠 로드맵 · UX 원칙 · 만드는 순서
 ```
 
@@ -264,6 +268,17 @@ L('c17', '사탕만', '🍬', 3, 151, ['🍭', '🍫'])        // 상: 방해꾼
 코스의 `lang` 이 있으면 완성 550ms 뒤 `level.say ?? level.name` 을 읽는다.
 자음 이름은 `hangul.js` 의 `SAY` 표에 있다 (모음은 소리 그대로: ㅏ→"아").
 
+**음성 팩** — `assets/voice/` 에 문구별 클립(m4a, 총 144개)이 있고
+`say()` 는 **클립 우선, 없으면 기기 TTS 폴백**이다. 클립은 WebAudio 재생이라
+iOS TTS 의 터치 제약을 받지 않고, 음소거(master)도 그대로 탄다.
+- 재생성: `node tools/make-voice.mjs` (맥 전용 — 유나/Samantha 로 합성).
+  문구를 추가·수정한 모듈이 있으면 이걸 다시 돌려야 클립이 생긴다.
+- **더 자연스러운 목소리로 교체**: TTS 사이트(Airy Studio 등)에서 생성한
+  wav/mp3 를 `assets/voice-src/` 에 **문구 이름 그대로**(기역.wav,
+  주하이.wav, "사과가 몇 개일까.wav") 넣고 생성기를 돌리면 변환·대체된다.
+  맥 파일명은 NFD 라 생성기가 NFC 정규화로 맞춘다. voice-src 는 커밋 안 함.
+- 문구 키는 `"<lang>|<텍스트>"` 로 say() 호출 텍스트와 정확히 같아야 한다.
+
 **iOS TTS 규칙 (아이패드 실측으로 확정)** — 직접 speak 하지 말고 `say()` 를 쓸 것.
 - **소리 권한은 탭(click 핸들러의 동기 흐름)에만 확실히 있다.**
   setTimeout·await 한 번만 지나도 무음. 그리고 **그리기(드래그)의 끝은
@@ -277,6 +292,21 @@ L('c17', '사탕만', '🍬', 3, 151, ['🍭', '🍫'])        // 상: 방해꾼
   전부 iOS 함정을 밟았다 — `say()` 는 "resume + speak" 그대로만 쓴다.
 - 원인 추적은 `tools/pen-log.html` 의 읽기 시험 4종으로 한다
   (터치 안 / 터치 밖 / 효과음과 동시 / 앱 모듈 경로).
+- **Siri 음성을 utterance 에 배정하면 무음으로 삼켜진다** (iOS 버그).
+  `bestVoice()` 가 Siri 계열을 거르는 이유 — 필터를 지우지 말 것.
+
+**iOS 좀비 오디오 세션 (아이패드 실측으로 확정)** — "TTS 는 나는데
+효과음·클립만 전부 무음, AudioContext 는 running, 분석기 출력 레벨은 뜀"
+이 증상이면 오디오 세션이 죽은 것이다 (TTS·시리·전화가 세션을 바꿔 놓는다).
+- 해법: `unlock()` 이 **즉석 합성한 무음 WAV(blob)를 `<audio>` 로 반복
+  재생**해 세션을 '재생' 등급으로 끌어올린다 (unmute.js 기법). 킥을 먼저
+  틀고 컨텍스트를 만든다 — 오염된 세션에서 만든 컨텍스트는 샘플레이트
+  (24kHz)까지 이상해진다.
+- 구급 수단: `resetAudio()` (컨텍스트 재생성), `enableSink()` (WebAudio
+  출력을 MediaStream → `<audio>` 로 우회).
+- **원인 추적은 `tools/ios-check.html`** — 아이패드에서 열면 자동 검사에
+  버튼 5개(효과음/TTS/재생성/일반오디오/우회로)와 출력 미터가 있다.
+  미터가 뛰는데 무음이면 세션·기기 쪽, 미터가 0 이면 코드 쪽.
 
 소리를 추가하면 홈의 🔊 버튼(음소거)에서도 조용해지는지 확인할 것 —
 `tone`/`hiss`/`voice` 를 거치지 않고 직접 노드를 만들면 음소거를 빠져나간다.
@@ -351,6 +381,15 @@ NUMBERS.forEach((L,i) => { const ox=(i%5)*190, oy=Math.floor(i/5)*190, s=0.166;
 
 ## 함정 모음
 
+- **iOS 의 `<audio>`/`<video>` 는 Range(206) 못 주는 서버의 미디어를 재생
+  거부한다** (오류 4, NotSupportedError). 데스크톱은 통짜 200 도 관대하게
+  틀어 줘서 **아이패드에서만** 죽는다 — "맥에선 나는데 아이패드에서 미디어만
+  안 나와"면 이것부터 의심. `tools/serve.mjs` 가 Range 를 지원하는 이유고,
+  GitHub Pages 는 원래 지원해서 배포판은 안 겪는다. 참고로 fetch +
+  decodeAudioData(WebAudio)는 Range 를 안 써서 같은 파일이 멀쩡히 나온다 —
+  그래서 더 헷갈린다.
+- **서비스 워커에서 206 응답을 `cache.put` 하면 예외가 난다.** `res.ok` 는
+  206 도 true 라 못 거른다. `sw.js` 는 Range 요청이면 아예 끼어들지 않는다.
 - **`hidden` 은 클래스의 `display` 에 진다.** 팝오버·시트처럼 `hidden` 으로 여닫는 요소에
   `.popover{display:flex}` 를 걸면 작성자 스타일이 브라우저 기본값 `[hidden]{display:none}` 을
   이겨서 오버레이가 계속 화면을 덮는다. 보이는 증상은 "색칠 화면에서 아무것도 안 눌림".

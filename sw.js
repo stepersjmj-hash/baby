@@ -6,7 +6,7 @@
      예전 캐시를 계속 쓴다 (가장 자주 겪는 함정).
    ============================================================ */
 
-const VERSION = 'v32';
+const VERSION = 'v34';
 const CACHE = `ainori-${VERSION}`;
 
 const SHELL = [
@@ -41,6 +41,7 @@ const SHELL = [
   './js/spot/judge.js',
   './js/count/index.js',
   './js/count/levels.js',
+  './assets/voice/manifest.json',
   './assets/icon-180.png',
   './assets/icon-192.png',
   './assets/icon-512.png'
@@ -64,10 +65,13 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
+  // iOS 미디어 재생기의 Range 요청은 그대로 네트워크로 보낸다.
+  // 206 응답을 cache.put 하면 예외가 나고, 끼어들 이유도 없다.
+  if (req.headers.get('range')) return;
   e.respondWith(
     fetch(req)
       .then(res => {
-        if (res && res.ok) {
+        if (res && res.ok && res.status === 200) {
           const copy = res.clone();
           caches.open(CACHE).then(c => c.put(req, copy));
         }

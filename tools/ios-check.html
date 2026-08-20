@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>소리 종합 점검</title>
+<style>
+  body { font: 16px/1.6 -apple-system, sans-serif; margin: 16px; background: #fffdf6; }
+  h1 { font-size: 20px; }
+  pre { white-space: pre-wrap; word-break: break-all; font-size: 15px;
+        background: #fff; border: 2px solid #e8dcc8; border-radius: 12px; padding: 12px; }
+  button { font-size: 22px; padding: 18px 22px; border-radius: 16px; border: 2px solid #d9a441;
+           background: #ffd166; margin: 6px 8px 6px 0; }
+</style>
+</head>
+<body>
+<h1>🔍 소리 종합 점검 — 열면 저절로 검사합니다</h1>
+<div>
+  <button id="b-sound">🔊 ① 효과음+클립+읽기 (여길 누르세요)</button>
+  <button id="b-tts">🗣 ② TTS만</button>
+  <button id="b-reset">🚑 ③ 오디오 새로 만들고 재시험</button>
+  <button id="b-plain">📻 ④ 일반 오디오로 "기역"</button>
+  <button id="b-sink">🩹 ⑤ 우회로 켜고 재시험</button>
+</div>
+<pre id="log">시작…</pre>
+<script>
+const log = (s) => { document.getElementById('log').textContent += '\n' + s; };
+window.addEventListener('error', (e) =>
+  log('⛔ 페이지 오류: ' + (e.message || e.type) + ' @' + (e.filename || '').split('/').pop() + ':' + (e.lineno || '')));
+window.addEventListener('unhandledrejection', (e) =>
+  log('⛔ 프라미스 오류: ' + (e.reason && e.reason.message || e.reason)));
+document.getElementById('log').textContent =
+  'UA: ' + navigator.userAgent.replace(/Mozilla\/5\.0 \(/, '(');
+</script>
+<script type="module">
+const t0 = Date.now();
+const step = (name, ok, extra = '') => log((ok ? '✅' : '❌') + ' ' + name + (extra ? ' — ' + extra : ''));
+let A = null;
+
+/* 1. 앱 모듈이 iOS 에서 통째로 죽는지 — 하나씩 불러 본다 */
+const MODULES = [
+  'js/core/audio.js', 'js/core/pen.js', 'js/core/store.js', 'js/core/trace.js',
+  'js/trace/index.js', 'js/trace/lines.js', 'js/trace/hangul.js', 'js/trace/numbers.js',
+  'js/trace/english.js', 'js/trace/names.js', 'js/trace/maze.js', 'js/trace/dots.js',
+  'js/coloring/index.js', 'js/coloring/pages.js', 'js/coloring/fill.js', 'js/coloring/photopage.js',
+  'js/puzzle/index.js', 'js/puzzle/pics.js', 'js/puzzle/cut.js',
+  'js/spot/index.js', 'js/spot/scenes.js', 'js/spot/judge.js',
+  'js/count/index.js', 'js/count/levels.js', 'js/main.js'
+];
+for (const m of MODULES) {
+  try {
+    const mod = await import('../' + m + '?t=' + t0);
+    if (m === 'js/core/audio.js') A = mod;
+    step(m, true);
+  } catch (e) { step(m, false, String(e && e.message || e)); }
+}
+
+/* 2. 음성 팩 — 목록과 클립 하나를 실제로 받아 해독해 본다 (소리 없이) */
+try {
+  const r = await fetch('../assets/voice/manifest.json?t=' + t0);
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const man = await r.json();
+  window.__man = man;
+  const keys = Object.keys(man);
+  step('음성 팩 목록', true, keys.length + '문구');
+  const f = man['ko-KR|기역'] || man[keys[0]];
+  const c = await fetch('../assets/voice/' + f + '?t=' + t0);
+  if (!c.ok) throw new Error('클립 HTTP ' + c.status);
+  const bytes = await c.arrayBuffer();
+  const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  const buf = await new Promise((res, rej) => {
+    const o = new OAC(1, 22050, 22050);
+    const p = o.decodeAudioData(bytes, res, rej);
+    if (p && p.then) p.then(res, rej);
+  });
+  step('클립 해독(' + f + ')', true, buf.duration.toFixed(2) + '초');
+} catch (e) { step('음성 팩', false, String(e && e.message || e)); }
+
+/* 3. 상태 요약 */
+try {
+  step('음소거', true, localStorage.getItem('sfx') === 'off' ? '🔇 켜짐 ← 이러면 소리 안 남!' : '꺼짐(정상)');
+  step('TTS 목소리', true, ('speechSynthesis' in window) ? speechSynthesis.getVoices().length + '개' : '없음');
+  if (A && A.audioState) step('audioState', true, JSON.stringify(A.audioState()));
+} catch (e) { step('상태', false, String(e)); }
+log('— 자동 검사 끝. 위에 ❌ 가 없으면 ① 버튼을 눌러 실제 소리를 확인하세요 —');
+
+/* 4. 버튼: 실제 소리 (제스처 필요) + 출력 레벨 미터
+   미터가 움직이는데 안 들리면 → 기기 쪽 (무음 모드·볼륨·이어폰)
+   미터도 안 움직이면 → 앱 코드 쪽 */
+let meterOn = false, meterGen = 0, meterBar = null;
+function startMeter() {
+  if (meterOn || !A || !A.analyser) return;
+  const an = A.analyser();
+  if (!an) { log('⛔ 오디오 컨텍스트를 못 만듦'); return; }
+  meterOn = true;
+  const gen = ++meterGen;
+  if (!meterBar) {
+    meterBar = document.createElement('div');
+    meterBar.style.cssText = 'position:fixed;left:0;top:0;height:14px;background:#2b7fe8;width:0;z-index:9';
+    document.body.append(meterBar);
+  }
+  const buf = new Uint8Array(an.fftSize);
+  let peak = 0;
+  const start = performance.now();
+  (function loop() {
+    if (gen !== meterGen) return;              // 컨텍스트를 새로 만들면 옛 루프는 죽는다
+    an.getByteTimeDomainData(buf);
+    let m = 0;
+    for (let i = 0; i < buf.length; i++) m = Math.max(m, Math.abs(buf[i] - 128));
+    meterBar.style.width = Math.min(100, m * 1.2) + '%';
+    peak = Math.max(peak, m);
+    if (performance.now() - start > 5200 && !window.__meterDone) {
+      window.__meterDone = true;
+      log(peak > 3
+        ? '📊 출력 레벨 최고 ' + peak + ' — 앱은 소리를 내보내는 중! 안 들리면 기기 무음 모드·볼륨을 확인하세요 (제어 센터의 🔔)'
+        : '📊 출력 레벨 0 — 앱이 소리를 못 내보냄 (코드/컨텍스트 문제) · ' + JSON.stringify(A.audioState()));
+    }
+    requestAnimationFrame(loop);
+  })();
+}
+function soundTest(label) {
+  A.unlock();
+  startMeter();
+  window.__meterDone = false;
+  log('▶ ' + label + ' 딸깍 → 팡파르 → "기역" 순서로 나야 합니다 · ' + JSON.stringify(A.audioState()));
+  A.sfx.tap();
+  setTimeout(() => A.sfx.cheer('trace'), 800);
+  setTimeout(() => { A.say('기역'); log('   상태: ' + JSON.stringify(A.audioState())); }, 2200);
+}
+let plainEl = null;
+function plainTest() {
+  // WebAudio 를 전혀 안 거치는 통로 — 이걸로도 안 나면 기기가 사파리
+  // 미디어 소리 자체를 막고 있는 것이다.
+  try {
+    if (!plainEl) {
+      const f = (window.__man && window.__man['ko-KR|기역']) || '기역.m4a';
+      plainEl = new Audio('../assets/voice/' + encodeURIComponent(f) + '?t=' + t0);
+      plainEl.setAttribute('playsinline', '');
+      plainEl.addEventListener('playing', () => log('   ④ <audio> 재생 시작됨 (안 들리면 기기 쪽)'));
+      plainEl.addEventListener('error', () => log('⛔ ④ <audio> 오류: ' + (plainEl.error && plainEl.error.code)));
+    }
+    plainEl.currentTime = 0;
+    const p = plainEl.play();
+    if (p && p.catch) p.catch(e => log('⛔ ④ 재생 거부: ' + e));
+    log('▶ ④ 일반 <audio> 로 "기역" — WebAudio 를 안 거칩니다');
+  } catch (e) { log('⛔ ④ ' + e); }
+}
+document.getElementById('b-sound').addEventListener('click', () => {
+  if (!A) { log('⛔ audio.js 가 안 불러져서 시험 불가'); return; }
+  soundTest('①');
+  setTimeout(() => log('   1.5초 뒤: ' + JSON.stringify(A.audioState())), 1500);
+});
+document.getElementById('b-plain').addEventListener('click', plainTest);
+document.getElementById('b-sink').addEventListener('click', () => {
+  if (!A || !A.enableSink) { log('⛔ 새 audio.js 가 아직 안 옴 — 새로고침 하세요'); return; }
+  const ok = A.enableSink();
+  log(ok ? '🩹 우회로(<audio> 싱크) 켬 — 미터는 더 이상 안 움직이는 게 정상' : '⛔ 우회로 켜기 실패');
+  if (!ok) return;
+  log('▶ ⑤ 딸깍 → 팡파르 → "기역" 순서로 나야 합니다');
+  A.sfx.tap();
+  setTimeout(() => A.sfx.cheer('trace'), 800);
+  setTimeout(() => { A.say('기역'); log('   상태: ' + JSON.stringify(A.audioState())); }, 2200);
+});
+document.getElementById('b-reset').addEventListener('click', () => {
+  if (!A) { log('⛔ audio.js 가 안 불러져서 시험 불가'); return; }
+  if (!A.resetAudio) { log('⛔ 새 audio.js 가 아직 안 옴 — 새로고침 하세요'); return; }
+  A.resetAudio();
+  meterOn = false;            // 새 컨텍스트에 미터를 다시 단다
+  log('🚑 오디오 컨텍스트를 새로 만들었습니다');
+  soundTest('③');
+});
+document.getElementById('b-tts').addEventListener('click', () => {
+  try {
+    const u = new SpeechSynthesisUtterance('안녕');
+    u.lang = 'ko-KR';
+    window.__u = u;
+    speechSynthesis.resume(); speechSynthesis.speak(u);
+    log('▶ ② "안녕" 이 나야 합니다 (기기 내장 TTS)');
+  } catch (e) { log('⛔ TTS: ' + e); }
+});
+</script>
+</body>
+</html>

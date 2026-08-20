@@ -16,17 +16,12 @@
    레이어 2장: cn-mark(배지·강조) / cn-board(물건·숫자 카드)
    ============================================================ */
 
-import { VIEW, AREA, CARDS, CARD_W, CARD_H, LEVELS, buildCount } from './levels.js';
+import { VIEW, AREA, CARDS, CARD_W, CARD_H, LEVELS, buildCount, COUNT_SAY, GAE } from './levels.js';
 import { sfx, say } from '../core/audio.js';
 
 const DPR = Math.min(window.devicePixelRatio || 1, 2);
 const DONE_KEY = 'countDone';
 const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
-
-/* 세는 소리(고유어)와 "N 개" (수관형사) */
-const COUNT_SAY = ['하나', '둘', '셋', '넷', '다섯', '여섯', '일곱', '여덟', '아홉', '열', '열하나', '열둘'];
-const GAE = ['한 개', '두 개', '세 개', '네 개', '다섯 개', '여섯 개',
-             '일곱 개', '여덟 개', '아홉 개', '열 개', '열한 개', '열두 개'];
 
 export function initCount({ toast, goHome }) {
   const $ = (id) => document.getElementById(id);
