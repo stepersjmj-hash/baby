@@ -7,7 +7,7 @@ import { initPractice } from './trace/index.js';
 import { initPuzzle } from './puzzle/index.js';
 import { initSpot } from './spot/index.js';
 import { initCount } from './count/index.js';
-import { unlock, sfx, setMuted, isMuted } from './core/audio.js';
+import { unlock, sfx, setMuted, isMuted, audioState } from './core/audio.js';
 import { works } from './core/store.js';
 
 const $ = (id) => document.getElementById(id);
@@ -189,6 +189,28 @@ fetch('sw.js').then(r => r.text()).then(t => {
 
 // 음소거 상태로 시작하면 조용한 이유를 화면이 직접 알린다
 if (isMuted()) toast('소리가 꺼져 있어요 — 오른쪽 위 🔇 를 누르면 켜져요');
+
+/* 소리 진단 — 홈 아래에 오디오 상태를 찍는다. 단, **이상할 때만.**
+   아이패드에는 콘솔이 없어서 "왜 조용하지" 를 눈으로 읽을 수 있어야
+   기기 문제(무음 스위치)인지 코드 문제(컨텍스트가 안 깨어남)인지 갈린다.
+   평소엔 아이 화면에 군더더기라 숨기고, 다음 중 하나라도 걸리면 띄운다.
+     · 컨텍스트가 running 이 아니다        → 코드/세션 쪽
+     · 샘플레이트가 24000                  → 오염된 세션에서 태어난 컨텍스트
+     · 킥에 오류가 붙었다                   → 무음 킥이 못 돌아감
+     · 음소거                              → 조용한 이유를 화면이 직접 알린다
+   깊이 파야 할 땐 tools/ios-check.html 을 쓴다.
+   홈에 있을 때만 갱신하므로 노는 동안은 비용이 없다. */
+setInterval(() => {
+  if (!$('screen-home').classList.contains('is-active')) return;
+  const s = audioState();
+  const 이상 = s.음소거 || s.킥오류 !== '없음' ||
+               (s.컨텍스트 !== '아직 안 만듦' && s.컨텍스트 !== 'running') ||
+               s.샘플레이트 === 24000;
+  $('audio-state').textContent = 이상
+    ? `🔈 ${s.컨텍스트}·${s.샘플레이트} 킥:${s.킥}(오류${s.킥오류}) 탭:${s.제스처}` +
+      (s.음소거 ? ' 🔇음소거' : '')
+    : '';
+}, 700);
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {

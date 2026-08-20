@@ -64,7 +64,8 @@ function silenceURL() {
   return URL.createObjectURL(new Blob([b.buffer], { type: 'audio/wav' }));
 }
 
-let kickStarted = false;
+let kickStarted = false;    // 킥이 실제로 재생된 적이 있는가
+let needRebuild = false;    // 킥보다 먼저 태어난 컨텍스트를 새로 파야 하는가
 function sessionKick() {
   try {
     if (!kickEl) {
@@ -72,38 +73,63 @@ function sessionKick() {
       kickEl.loop = true;
       kickEl.setAttribute('playsinline', '');
       // 킥이 '처음으로' 실제 재생되는 순간: 그 전에 만들어진 컨텍스트는
-      // 오염된 세션에서 태어나 킥이 돌아도 무음일 수 있다 — 새로 판다.
+      // 오염된 세션에서 태어나 킥이 돌아도 무음일 수 있다 — 새로 파야 한다.
       // (pointerdown 은 재생 제스처가 아니라서, 첫 획을 긋는 동안 만들어진
       // 컨텍스트가 정확히 이 처지가 된다.)
+      //
+      // ★ 여기서 바로 새로 파면 안 된다. 'playing' 은 사용자 제스처가
+      //   아니라서 그때 만든 AudioContext 를 iOS 는 suspended 로 붙잡아
+      //   두고 resume() 도 안 먹인다 — 소리가 통째로 죽는다. 표시만 해
+      //   두고, 진짜 제스처(unlock)가 올 때 판다.
       kickEl.addEventListener('playing', () => {
         if (kickStarted) return;
         kickStarted = true;
-        if (ctx) resetAudio();
+        if (ctx) needRebuild = true;
       });
     }
     if (kickEl.paused) kickEl.play().catch(() => { /* 제스처 밖이면 다음 기회에 */ });
   } catch { /* Audio 없는 환경 */ }
 }
 
+/** 컨텍스트만 버린다 (다시 만드는 건 제스처 안에서 ac() 가 한다) */
+function dropCtx() {
+  try { ctx && ctx.close(); } catch { /* 이미 닫혔다 */ }
+  ctx = null; master = null; noiseBuf = null; sinkEl = null;
+  clipBufs.clear();
+}
+
 /* 킥을 먼저 틀고 컨텍스트를 만든다 — 세션이 오염된 채로 만든
-   컨텍스트는 샘플레이트(24kHz)까지 물려받아 계속 이상하다. */
-export function unlock() { sessionKick(); ac(); }
+   컨텍스트는 샘플레이트(24kHz)까지 물려받아 계속 이상하다.
+   unlock() 은 반드시 제스처 안에서만 불린다(아래 리스너) — 그래서
+   미뤄 둔 재생성도 여기서 처리해야 새 컨텍스트가 running 으로 태어난다. */
+let wokeLast = true;        // 지난 제스처에서 컨텍스트가 깨어 있었는가
+export function unlock() {
+  sessionKick();
+  // 지난 제스처에서 resume() 을 부르고도 여태 안 깨어났으면 그 컨텍스트는
+  // 굳은 것이다 (iOS 는 제스처 밖에서 만든 컨텍스트를 이렇게 붙잡아 둔다).
+  // 되살리려 애쓰지 말고 버린다 — 제스처 안이라 새로 파면 바로 running 이다.
+  if (ctx && ctx.state !== 'running' && !wokeLast) needRebuild = true;
+  if (needRebuild) { needRebuild = false; dropCtx(); }
+  const a = ac();
+  wokeLast = !a || a.state === 'running';
+}
 
 /* 킥은 '진짜 제스처'(click·touchend·pointerup)에서만 재생이 허용된다 —
    구형 iPadOS 는 pointerdown 을 미디어 재생 제스처로 안 쳐 준다.
    (진단 페이지의 click 버튼에선 나는데 앱에선 무음이던 원인.)
    그래서 화면 아무 데나 탭할 때마다 킥이 살아 있는지 확인한다.
    킥이 이미 돌고 있으면 paused 검사 한 번이라 비용은 없다. */
+let gestures = 0, lastGesture = '';   // 진단용: 제스처가 오기는 오는가
 if (typeof window !== 'undefined') {
   for (const ev of ['click', 'touchend', 'pointerup'])
-    window.addEventListener(ev, () => unlock(), { capture: true, passive: true });
+    window.addEventListener(ev, () => { gestures++; lastGesture = ev; unlock(); },
+                            { capture: true, passive: true });
 }
 
 /** 진단·구급용: 컨텍스트를 버리고 새로 만든다 (좀비 세션 탈출) */
 export function resetAudio() {
-  try { ctx && ctx.close(); } catch { /* 이미 닫혔다 */ }
-  ctx = null; master = null; noiseBuf = null; sinkEl = null;
-  clipBufs.clear();
+  needRebuild = false;
+  dropCtx();
   unlock();
 }
 
@@ -387,6 +413,9 @@ export function audioState() {
     컨텍스트: ctx ? ctx.state : '아직 안 만듦',
     샘플레이트: ctx ? ctx.sampleRate : 0,        // 44100/48000 정상 · 24000 은 세션 오염
     음소거: muted,
+    재생성대기: needRebuild,
+    제스처: gestures + (lastGesture ? '(' + lastGesture + ')' : ''),
+    킥오류: kickEl && kickEl.error ? kickEl.error.code : '없음',
     팩: pack ? Object.keys(pack).length + '문구' : '없음(로딩 중이거나 실패)',
     킥: kickEl
       ? (kickEl.error ? '오류 ' + kickEl.error.code
