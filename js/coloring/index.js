@@ -23,7 +23,8 @@ import { BRUSHES, TOOL_ORDER, SPECIAL, STICKERS, stampText } from './brushes.js'
 import { PAGES, drawPage } from './pages.js';
 import { floodFill, alphaMask, hexToRgba } from './fill.js';
 import { sfx, voice } from '../core/audio.js';
-import { works, drafts } from '../core/store.js';
+import { works, drafts, linework } from '../core/store.js';
+import { photoToLineArt } from './photopage.js';
 
 const DPR = Math.min(window.devicePixelRatio || 1, 2);
 const MAX_RECS = 24;
@@ -97,6 +98,12 @@ export function initColoring({ toast, goHome }) {
   let sizeIdx = 1;
   let sticker = '⭐';
   let recent = JSON.parse(localStorage.getItem('recentColors') || '[]');
+
+  /* 내 사진 밑그림 (외곽선 PNG). draw 가 이미지를 그리는 것 말고는
+     기본 밑그림과 똑같이 취급된다 — 물감통 벽도 그대로 잡힌다 */
+  let photoPages = [];
+  const lwImgs = new Map();          // linework id → { img, url }
+  const allPages = () => [...PAGES, ...photoPages];
 
   let recs = [];
   let redo = [];
@@ -533,11 +540,69 @@ export function initColoring({ toast, goHome }) {
     sfx.tap();
   }
 
+  /* ── 내 사진 밑그림 ───────────────────────────────────── */
+  /** 저장된 외곽선들을 읽어 페이지 목록을 맞춘다 */
+  async function refreshLinework() {
+    let items = [];
+    try { items = await linework.all(); } catch { /* 저장소를 못 열면 기본 그림만 */ }
+    for (const rec of items) {
+      if (lwImgs.has(rec.id)) continue;
+      const url = URL.createObjectURL(rec.blob);
+      const img = new Image();
+      try {
+        await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+        lwImgs.set(rec.id, { img, url });
+      } catch { URL.revokeObjectURL(url); }
+    }
+    for (const [id, e] of lwImgs)              // 지워진 것 정리
+      if (!items.some(r => r.id === id)) { URL.revokeObjectURL(e.url); lwImgs.delete(id); }
+    photoPages = items.filter(r => lwImgs.has(r.id)).map(rec => ({
+      id: 'lw' + rec.id, lw: rec.id, name: '내 사진',
+      draw: (c) => c.drawImage(lwImgs.get(rec.id).img, 0, 0, 1000, 700)
+    }));
+  }
+
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = 'image/*';
+  fileInput.multiple = true;
+  fileInput.addEventListener('change', async () => {
+    const files = [...fileInput.files];
+    fileInput.value = '';
+    if (!files.length) return;
+    toast('외곽선을 따는 중… ✏️');
+    let firstId = null;
+    for (const f of files) {
+      try {
+        const blob = await photoToLineArt(f);
+        if (blob) firstId = await linework.add(blob);
+      } catch { /* 한 장이 깨져도 나머지는 계속 */ }
+    }
+    await refreshLinework();
+    buildPageSheet();
+    if (firstId != null) {
+      toast('사진 밑그림이 생겼어요! 📷');
+      $('sheet-pages').hidden = true;
+      openPage('lw' + firstId);
+    }
+  });
+
+  async function removeLinework(lwId) {
+    if (!window.confirm('이 사진 밑그림을 지울까요?')) return;
+    try { await linework.del(lwId); } catch { /* 못 지워도 그냥 둔다 */ }
+    drafts.del('lw' + lwId).catch(() => {});
+    await refreshLinework();
+    buildPageSheet();
+    sfx.clear();
+    toast('사진을 지웠어요');
+    if (page.lw === lwId) openPage(PAGES[0].id);
+  }
+
   /* ── 그림 고르기 ──────────────────────────────────────── */
   function buildPageSheet() {
     const grid = $('page-grid');
     grid.innerHTML = '';
-    for (const p of PAGES) {
+    for (const p of allPages()) {
       const card = document.createElement('button');
       card.type = 'button';
       card.className = 'page-card';
@@ -548,12 +613,25 @@ export function initColoring({ toast, goHome }) {
       nm.className = 'name'; nm.textContent = p.name;
       card.append(cv, nm);
       card.addEventListener('click', () => { $('sheet-pages').hidden = true; openPage(p.id); });
+      if (p.lw) {                                     // 사진 밑그림: 2초 길게 누르면 삭제
+        let t = 0;
+        card.addEventListener('pointerdown', () => { t = setTimeout(() => removeLinework(p.lw), 2000); });
+        for (const ev of ['pointerup', 'pointercancel', 'pointerleave'])
+          card.addEventListener(ev, () => clearTimeout(t));
+      }
       grid.appendChild(card);
     }
+    // 📷 사진 추가 — 사진을 고르면 외곽선만 따서 밑그림이 된다
+    const add = document.createElement('button');
+    add.type = 'button';
+    add.className = 'page-card add';
+    add.innerHTML = '<div class="big">📷</div><div class="name">사진 추가</div>';
+    add.addEventListener('click', () => { sfx.tap(); fileInput.click(); });
+    grid.appendChild(add);
   }
 
   async function openPage(id) {
-    page = PAGES.find(x => x.id === id) || PAGES[0];
+    page = allPages().find(x => x.id === id) || PAGES[0];
     localStorage.setItem('lastPage', page.id);
     recs = []; redo = [];
     if (W && H) {
@@ -609,9 +687,18 @@ export function initColoring({ toast, goHome }) {
   buildTools(); buildSizes(); updateSwatchButton();
 
   return {
-    /** 색칠 화면을 열 때 호출 */
-    enter(pageId) {
-      openPage(pageId || localStorage.getItem('lastPage') || PAGES[0].id);
+    /** 색칠 화면을 열 때 호출 — 그림을 무작위로 하나 펼쳐 준다.
+        같은 그림이 연달아 나오지 않게 직전 그림만 피한다.
+        그리다 만 그림(draft)은 페이지별로 저장돼 있어 잃지 않는다. */
+    enter() {
+      refreshLinework().finally(() => {
+        const pool = allPages();
+        const last = localStorage.getItem('lastPage');
+        let pick = pool[(Math.random() * pool.length) | 0];
+        if (pool.length > 1 && pick.id === last)
+          pick = pool[(pool.findIndex(p => p.id === pick.id) + 1) % pool.length];
+        openPage(pick.id);
+      });
     }
   };
 }

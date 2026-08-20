@@ -282,6 +282,9 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .page-card canvas{width:100%;height:auto;border-radius:12px;display:block}
 .page-card .name{font-size:14px;font-weight:800;padding-bottom:4px}
 .page-card:active{transform:scale(.96)}
+.page-card.add{justify-content:center;min-height:130px;background:#fff6e6;
+               border:2px dashed #d8c69e;box-shadow:none}
+.page-card.add .big{font-size:44px;line-height:1;padding:14px 0 4px}
 
 /* ───────────── 갤러리 ───────────── */
 .gallery-grid{
