@@ -12,7 +12,7 @@
    매번 다르게 잘린다.
 
    내 사진: 📷 사진 추가 칩 → 사진첩에서 고르면 줄여서 IndexedDB 에
-   저장하고, 사진마다 하·중·상 세 단계가 생긴다. 사진 칩을 2초
+   저장하고, 사진마다 상(8조각) 퍼즐 하나가 생긴다. 사진 칩을 2초
    길게 누르면 지운다 (파괴적 동작은 어렵게 — 3~6세 UX 원칙).
 
    레이어 3장 (CSS 로 겹쳐 두고 GPU 가 합성한다)
@@ -32,7 +32,6 @@ import { photos } from '../core/store.js';
 
 const DPR = Math.min(window.devicePixelRatio || 1, 2);
 const DONE_KEY = 'puzzleDone';
-const HARD_NAME = { 1: '3조각', 2: '5조각', 3: '8조각' };
 
 export function initPuzzle({ toast, goHome }) {
   const $ = (id) => document.getElementById(id);
@@ -299,12 +298,14 @@ export function initPuzzle({ toast, goHome }) {
     } finally { URL.revokeObjectURL(url); }
   }
 
+  /* 사진마다 상(8조각) 하나만 만든다. id 는 예전 하·중·상 시절의
+     h3 와 같아서 그때 모은 별이 그대로 남는다. */
   function photoLevels(items) {
-    return items.flatMap(ph => [1, 2, 3].map(hard => ({
-      id: `p${ph.id}h${hard}`, photo: ph.id, hard,
-      name: HARD_NAME[hard], ico: '📷',
-      seed: ph.id * 131 + hard
-    })));
+    return items.map(ph => ({
+      id: `p${ph.id}h3`, photo: ph.id, hard: 3,
+      name: '내 사진', ico: '📷',
+      seed: ph.id * 131 + 3
+    }));
   }
 
   /** IndexedDB 의 사진을 읽어 단계 목록과 이미지 캐시를 맞춘다 */

@@ -15,8 +15,8 @@
     const byHard = { 1: 0, 2: 0, 3: 0 };
     const ids = new Set();
     for (const L of PICS) { byHard[L.hard]++; ids.add(L.id); }
-    const ok = PICS.length === 30 && byHard[1] === 10 && byHard[2] === 10 && byHard[3] === 10
-               && ids.size === 30;
+    const ok = PICS.length === 9 && byHard[1] === 3 && byHard[2] === 3 && byHard[3] === 3
+               && ids.size === 9;
     log.push(`구성: ${PICS.length}문제 (하${byHard[1]} 중${byHard[2]} 상${byHard[3]}) ${ok ? 'OK' : 'FAIL'}`);
   }
 
@@ -54,13 +54,13 @@
           JSON.stringify(buildPuzzle(L, 3).map(p => p.rect)))
         bad.push(L.id + ':안 바뀜');
     }
-    log.push(`${HARD[hard]} 10문제 (${want[hard]}조각): ${bad.length ? 'FAIL → ' + [...new Set(bad)].slice(0, 3).join(' ') : 'OK'}`);
+    log.push(`${HARD[hard]} 3문제 (${want[hard]}조각): ${bad.length ? 'FAIL → ' + [...new Set(bad)].slice(0, 3).join(' ') : 'OK'}`);
   }
 
   // 3) 붙기 판정: 제자리 근처는 붙고, 옆 조각 자리는 안 붙는다
   {
     const bad = [];
-    for (const L of [PICS[0], PICS[10], PICS[20]]) {
+    for (const L of [PICS[0], PICS[4], PICS[8]]) {
       const pcs = buildPuzzle(L, 5);
       for (const p of pcs) {
         if (Math.hypot(SNAP - 4, 0) > SNAP) bad.push('판정식');
@@ -82,7 +82,7 @@
   try {
     const { photos } = await import('/js/core/store.js' + q);
     const n = (await photos.all()).length;
-    log.push(`내 사진: ${n}장 → 사진 단계 ${n * 3}개`);
+    log.push(`내 사진: ${n}장 → 사진 퍼즐(8조각) ${n}개`);
   } catch { log.push('내 사진: 저장소를 못 열었다 (기본 그림만)'); }
 
   // 5) 화면 — 칩 = 기본 30 + 사진×3 + 사진 추가 버튼

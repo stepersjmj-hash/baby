@@ -42,7 +42,7 @@ js/
     dots.js               점 잇기 그림 5개
   puzzle/
     index.js              조각 퍼즐: 판·조각 그리기, 드래그, 착 붙기, 내 사진 관리
-    pics.js               기본 그림 30장 (하·중·상 각 10) — 이모지 장면
+    pics.js               기본 그림 9장 (하·중·상 각 3) — 이모지 장면
     cut.js                조각 기하: BSP 무작위 분할 + 혹(knob) — 점검과 공용
   spot/
     index.js              다른 그림 찾기: 두 그림판, 동그라미 표시, UI 배선
@@ -99,7 +99,7 @@ await eval(await (await fetch('/tools/selftest-trace.js')).text())
 await eval(await (await fetch('/tools/selftest-puzzle.js')).text())
 ```
 
-30문제 구성(3·5·8조각) · 빈틈없는 자르기 · 혹/홈 짝 · 붙기 판정을 확인한다.
+9문제 구성(3·5·8조각 각 3) · 빈틈없는 자르기 · 혹/홈 짝 · 붙기 판정을 확인한다.
 
 다른 그림 찾기 화면에서:
 
@@ -173,7 +173,7 @@ P('dino', '공룡', '🦕', 2, ['#d9f2d0', '#f4ffe9'],
   자가 점검이 씨앗을 고정해 기하를 검사한다. 화면은 열 때마다 새 씨앗.
 - 조각은 **자기 자리 근처(SNAP=48)에서만** 붙는다.
 - **내 사진 퍼즐**: 퍼즐 화면 끝의 📷 칩으로 추가한다. 긴 변 1280 으로 줄인
-  JPEG 를 IndexedDB(photos) 에 저장하고, 사진마다 하·중·상 세 단계가 생긴다.
+  JPEG 를 IndexedDB(photos) 에 저장하고, 사진마다 상(8조각) 퍼즐 하나가 생긴다.
   사진 칩을 2초 길게 누르면 삭제(확인창). 판 비율(4:3)에 맞춰 가운데를 자른다.
 - 추가한 뒤 `tools/selftest-puzzle.js` 로 "자르기 OK / 혹홈 OK" 를 확인한다.
 
