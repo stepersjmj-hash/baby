@@ -661,12 +661,12 @@ export function initColoring({ toast, goHome }) {
     cPaint.toBlob(b => { if (b) drafts.put(page.id, b).catch(() => {}); }, 'image/png');
   }
 
-  /* 전체 지우기는 2초 길게 누르기 — 아이가 실수로 다 날리는 걸 막는 잠금장치 */
+  /* 전체 지우기는 1초 길게 누르기 — 아이가 실수로 다 날리는 걸 막는 잠금장치 */
   (function holdToClear() {
     const btn = $('btn-clear');
     const fill = btn.querySelector('.hold-fill');
     let t0 = 0, raf = 0;
-    const HOLD = 2000;
+    const HOLD = 1000;
     const stop = () => { cancelAnimationFrame(raf); raf = 0; fill.style.height = '0%'; };
     const tick = () => {
       const r = Math.min(1, (performance.now() - t0) / HOLD);

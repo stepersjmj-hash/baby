@@ -82,6 +82,10 @@ export function initPractice({ toast, goHome }) {
   let drawing = false, party = null;
   let raf = 0, advanceTimer = 0, lastBeep = 0;
 
+  /* 안내말("이름을 써 보자")을 이미 한 코스들 — 세션당 한 번만 말한다.
+     단계를 옮길 때마다 반복하면 성가시다. */
+  const introSaid = new Set();
+
   /* 펜이 닿아 있는 동안 계속 나는 소리 (선 긋기=미끄러짐, 한글·숫자=사각사각,
      미로=또각또각). 점 잇기만 없다 — 점에 닿을 때 울리는 게 더 분명하다. */
   let vox = null, voxAt = 0, voxPt = null;
@@ -330,7 +334,6 @@ export function initPractice({ toast, goHome }) {
     // 이름 쓰기(full)는 마지막 글자 읽기(feed 에서 예약됨)를 두고,
     // 전체 이름은 📣 버튼으로 듣는다.
     if (course.lang && !course.full) sayOnLift = level.say ?? level.name;
-    if (course.full) $('btn-trace-say').disabled = false;
     celebrate();
     toast('잘했어요! 🎉');
     clearTimeout(advanceTimer);
@@ -418,11 +421,18 @@ export function initPractice({ toast, goHome }) {
     // 여는 경로(홈 카드·칩·◀▶)가 전부 click 이라 iOS 소리 권한이 있고,
     // 여기서 한 번 성공하면 세션이 풀려 완성 읽기(비동기)도 나온다.
     // 실측: 그리기(드래그)의 끝 이벤트는 pointerup/touchend 모두 권한이 없다.
-    // 이름 쓰기는 이름을 미리 읽지 않는다 — 완성이 보상이다. 안내말만 한다.
-    if (course.lang) say(course.full ? (course.intro ?? '') : (level.say ?? level.name), course.lang);
+    // 이름 쓰기는 이름을 미리 읽지 않는다 — 완성이 보상이다.
+    // 안내말은 이 코스에 처음 들어왔을 때 한 번만 한다.
+    if (course.lang) {
+      if (!course.full) say(level.say ?? level.name, course.lang);
+      else if (course.intro && !introSaid.has(courseId)) {
+        introSaid.add(courseId);
+        say(course.intro, course.lang);
+      }
+    }
     const sayBtn = $('btn-trace-say');
     sayBtn.hidden = !course.full;
-    sayBtn.disabled = !done.has(level.id);      // 이미 완성한 이름은 바로 들을 수 있다
+    sayBtn.disabled = false;                    // 언제든 눌러서 들을 수 있다
     $('trace-name').textContent = level.name;
     $('btn-trace-prev').disabled = li === 0;
     $('btn-trace-next').disabled = li === built.length - 1;
@@ -467,14 +477,11 @@ export function initPractice({ toast, goHome }) {
   // 아래 이름표를 누르면 읽어 준다 — 아이가 듣고 싶을 때 다시 듣는 용도이자,
   // 터치 안에서 도는 가장 확실한 TTS 경로다
   $('trace-name').addEventListener('click', () => {
-    if (!course.lang) return;
-    if (course.full && $('btn-trace-say').disabled) { say(course.intro ?? '', course.lang); return; }
-    say(level.say ?? level.name, course.lang);
+    if (course.lang) say(level.say ?? level.name, course.lang);
   });
 
-  // 📣 전체 듣기 — 이름을 완성해야 켜진다
+  // 📣 전체 듣기 — 언제든 누르면 전체 이름을 읽어 준다
   $('btn-trace-say').addEventListener('click', () => {
-    if ($('btn-trace-say').disabled) return;
     sfx.tap();
     say(level.say ?? level.name, course.lang ?? 'ko-KR');
   });
