@@ -237,6 +237,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .lvl[data-hard="1"]::after{background:#7fd18a}
 .lvl[data-hard="2"]::after{background:#ffc94d}
 .lvl[data-hard="3"]::after{background:#ff8a6b}
+.lvl[data-hard="4"]::after{background:#7ab8f2}
 
 .lvl-name{
   font-size:19px;font-weight:800;min-width:104px;text-align:center;

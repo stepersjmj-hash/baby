@@ -1,4 +1,4 @@
-/* 따라 그리기류(선 긋기·한글·숫자·영어·미로·점 잇기) 자가 점검.
+/* 따라 그리기류(선 긋기·한글·숫자·영어·이름·미로·점 잇기) 자가 점검.
    브라우저 콘솔에 붙여넣어 돌린다.
 
    판정은 엔진(core/trace.js)을 직접 불러 시험하므로 아이가 모은 별(진행 기록)을
@@ -11,6 +11,7 @@
     '한글':    [(await import('/js/trace/hangul.js' + q)).HANGUL, 40],
     '숫자':    [(await import('/js/trace/numbers.js' + q)).NUMBERS, 40],
     '영어':    [(await import('/js/trace/english.js' + q)).ENGLISH, 40],
+    '이름':    [(await import('/js/trace/names.js' + q)).NAMES, 28],
     '미로':    [(await import('/js/trace/maze.js' + q)).MAZES, 40],
     '점 잇기': [(await import('/js/trace/dots.js' + q)).DOTS, 60]
   };

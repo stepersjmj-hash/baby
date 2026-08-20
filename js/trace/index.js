@@ -25,6 +25,7 @@ import { NUMBERS } from './numbers.js';
 import { ENGLISH } from './english.js';
 import { MAZES } from './maze.js';
 import { DOTS } from './dots.js';
+import { NAMES } from './names.js';
 
 /* 코스 정의. guide:false 면 길을 그려 주지 않는다(미로·점 잇기). */
 const COURSES = {
@@ -36,7 +37,12 @@ const COURSES = {
   english:{ levels: ENGLISH, guide: true,  tol: 40, key: 'englishDone', voice: 'write',
             from: '✏️', to: '⭐', lang: 'en-US' },
   maze:   { levels: MAZES,   guide: false, tol: 40, key: 'mazeDone',   voice: 'scurry' },
-  dots:   { levels: DOTS,    guide: false, tol: 60, key: 'dotsDone',   voice: null }
+  dots:   { levels: DOTS,    guide: false, tol: 60, key: 'dotsDone',   voice: null },
+  /* 이름 쓰기: 음절 블록이 작아 길·표시를 가늘게(road/fill/icon/badge),
+     full 이면 열 때 이름을 미리 읽지 않고(intro 만) 완성 후 📣 로 듣는다 */
+  names:  { levels: NAMES,   guide: true,  tol: 28, key: 'namesDone',  voice: 'write',
+            from: '✏️', to: '⭐', lang: 'ko-KR', full: true, intro: '이름을 써 보자',
+            road: 34, fill: 24, icon: 44, badge: 12 }
 };
 
 const DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -106,6 +112,12 @@ export function initPractice({ toast, goHome }) {
     redrawAll();
   }
 
+  /* 코스별 치수 — 이름 쓰기는 획이 촘촘해서 가늘게 그린다 */
+  const roadW  = () => course.road ?? ROAD;
+  const fillW  = () => course.fill ?? FILL;
+  const iconSz = () => course.icon ?? ICON;
+  const badgeR = () => course.badge ?? 17;
+
   /* ── 그리기 ───────────────────────────────────────────── */
   function pathTo(ctx, pts, from, to) {
     ctx.beginPath();
@@ -131,7 +143,7 @@ export function initPractice({ toast, goHome }) {
     if (course.guide) {                                 // 따라갈 길 + 점선
       for (const p of level.paths) {
         pathTo(gctx, p, 0, p.length - 1);
-        gctx.strokeStyle = '#f0e7d3'; gctx.lineWidth = ROAD * S; gctx.stroke();
+        gctx.strokeStyle = '#f0e7d3'; gctx.lineWidth = roadW() * S; gctx.stroke();
         gctx.setLineDash([7 * S, 17 * S]);
         gctx.strokeStyle = '#cbb896'; gctx.lineWidth = 4 * S; gctx.stroke();
         gctx.setLineDash([]);
@@ -157,7 +169,7 @@ export function initPractice({ toast, goHome }) {
   /** 새로 지나온 구간만 덧칠한다 */
   function paintProgress() {
     fctx.lineCap = 'round'; fctx.lineJoin = 'round';
-    fctx.lineWidth = FILL * S;
+    fctx.lineWidth = fillW() * S;
     const upto = Math.min(tracer.stroke, level.paths.length - 1);
     for (let i = 0; i <= upto; i++) {
       const p = level.paths[i];
@@ -184,7 +196,7 @@ export function initPractice({ toast, goHome }) {
     // ㄷ·ㄹ·ㅌ·ㅅ·5 처럼 획의 시작점이 겹치는 글자가 있어서, 겹치면
     // 그 획을 따라 조금 밀어 놓는다 — 번호가 포개지면 획순을 못 읽는다.
     if (level.paths.length > 1) {
-      const R = 17, placed = [];
+      const R = badgeR(), placed = [];
       for (let i = 0; i < level.paths.length; i++) {
         const p2 = level.paths[i];
         let k = 0;
@@ -195,14 +207,14 @@ export function initPractice({ toast, goHome }) {
         xctx.fillStyle = i < tracer.stroke ? '#bda981' : '#ff8a3d';
         xctx.beginPath(); xctx.arc(a.x * S, a.y * S, R * S, 0, 6.283); xctx.fill();
         xctx.fillStyle = '#fff';
-        xctx.font = `800 ${22 * S}px system-ui,sans-serif`;
+        xctx.font = `800 ${R * 1.3 * S}px system-ui,sans-serif`;
         xctx.textAlign = 'center'; xctx.textBaseline = 'middle';
         xctx.fillText(String(i + 1), a.x * S, a.y * S + S);
       }
     }
 
     const goal = p[p.length - 1];
-    emoji(xctx, level.to ?? course.to ?? '⭐', goal.x * S, goal.y * S, ICON * S);
+    emoji(xctx, level.to ?? course.to ?? '⭐', goal.x * S, goal.y * S, iconSz() * S);
 
     if (!tracer.finished) {
       const head = tracer.head();
@@ -210,9 +222,9 @@ export function initPractice({ toast, goHome }) {
       if (tracer.index === 0) {
         const pulse = 1 + Math.sin(now / 260) * 0.12;
         xctx.strokeStyle = '#3fb950'; xctx.lineWidth = 5 * S;
-        xctx.beginPath(); xctx.arc(head.x * S, head.y * S, 44 * S * pulse, 0, 6.283); xctx.stroke();
+        xctx.beginPath(); xctx.arc(head.x * S, head.y * S, iconSz() * 0.72 * S * pulse, 0, 6.283); xctx.stroke();
       }
-      emoji(xctx, level.from ?? course.from ?? '✏️', head.x * S, head.y * S, ICON * S);
+      emoji(xctx, level.from ?? course.from ?? '✏️', head.x * S, head.y * S, iconSz() * S);
     }
 
     if (party) {
@@ -292,6 +304,11 @@ export function initPractice({ toast, goHome }) {
         drawGuide();
       }
     }
+    if (r.strokeDone || r.allDone) {
+      // 이름 쓰기: 방금 끝낸 획이 글자의 마지막 획이면 그 글자를 읽는다
+      const just = (r.allDone ? level.paths.length : tracer.stroke) - 1;
+      if (course.full && level.sylSay?.[just]) sayOnLift = level.sylSay[just];
+    }
     if (r.strokeDone && !r.allDone) sfx.strokeDone(tracer.stroke, level.paths.length);
     if (r.allDone) finish();
     else if (r.advanced || r.strokeDone) drawFx();
@@ -310,7 +327,10 @@ export function initPractice({ toast, goHome }) {
     // 읽기는 여기서 하지 않는다 — 완성은 보통 펜이 움직이는 중에 판정되는데,
     // iOS 는 터치 제스처의 동기 흐름 밖에서 부른 첫 speak 을 무음으로 버린다.
     // 펜을 떼는 pointerup(제스처 안)에서 읽도록 표시만 해 둔다.
-    if (course.lang) sayOnLift = level.say ?? level.name;
+    // 이름 쓰기(full)는 마지막 글자 읽기(feed 에서 예약됨)를 두고,
+    // 전체 이름은 📣 버튼으로 듣는다.
+    if (course.lang && !course.full) sayOnLift = level.say ?? level.name;
+    if (course.full) $('btn-trace-say').disabled = false;
     celebrate();
     toast('잘했어요! 🎉');
     clearTimeout(advanceTimer);
@@ -398,7 +418,11 @@ export function initPractice({ toast, goHome }) {
     // 여는 경로(홈 카드·칩·◀▶)가 전부 click 이라 iOS 소리 권한이 있고,
     // 여기서 한 번 성공하면 세션이 풀려 완성 읽기(비동기)도 나온다.
     // 실측: 그리기(드래그)의 끝 이벤트는 pointerup/touchend 모두 권한이 없다.
-    if (course.lang) say(level.say ?? level.name, course.lang);
+    // 이름 쓰기는 이름을 미리 읽지 않는다 — 완성이 보상이다. 안내말만 한다.
+    if (course.lang) say(course.full ? (course.intro ?? '') : (level.say ?? level.name), course.lang);
+    const sayBtn = $('btn-trace-say');
+    sayBtn.hidden = !course.full;
+    sayBtn.disabled = !done.has(level.id);      // 이미 완성한 이름은 바로 들을 수 있다
     $('trace-name').textContent = level.name;
     $('btn-trace-prev').disabled = li === 0;
     $('btn-trace-next').disabled = li === built.length - 1;
@@ -443,7 +467,16 @@ export function initPractice({ toast, goHome }) {
   // 아래 이름표를 누르면 읽어 준다 — 아이가 듣고 싶을 때 다시 듣는 용도이자,
   // 터치 안에서 도는 가장 확실한 TTS 경로다
   $('trace-name').addEventListener('click', () => {
-    if (course.lang) say(level.say ?? level.name, course.lang);
+    if (!course.lang) return;
+    if (course.full && $('btn-trace-say').disabled) { say(course.intro ?? '', course.lang); return; }
+    say(level.say ?? level.name, course.lang);
+  });
+
+  // 📣 전체 듣기 — 이름을 완성해야 켜진다
+  $('btn-trace-say').addEventListener('click', () => {
+    if ($('btn-trace-say').disabled) return;
+    sfx.tap();
+    say(level.say ?? level.name, course.lang ?? 'ko-KR');
   });
 
   $('btn-trace-home').addEventListener('click', () => { clearTimeout(advanceTimer); goHome(); });
