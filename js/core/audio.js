@@ -17,6 +17,7 @@
 
 const AC = window.AudioContext || window.webkitAudioContext;
 let ctx = null, master = null, noiseBuf = null;
+let resumeFail = '';        // 마지막 resume() 거부 사유 (진단용)
 let muted = localStorage.getItem('sfx') === 'off';
 
 function ac() {
@@ -28,7 +29,10 @@ function ac() {
   }
   // iOS 는 전화·시리·백그라운드 뒤에 'interrupted' 라는 비표준 상태로
   // 멈춰 있기도 한다 — 'suspended' 만 보면 영영 안 깨어난다.
-  if (ctx && ctx.state !== 'running') ctx.resume();
+  if (ctx && ctx.state !== 'running')
+    try { ctx.resume().then(() => { resumeFail = ''; },
+                            e => { resumeFail = (e && e.name) || String(e); }); }
+    catch (e) { resumeFail = (e && e.name) || String(e); }
   return ctx;
 }
 
@@ -65,6 +69,7 @@ function silenceURL() {
 }
 
 let kickStarted = false;    // 킥이 실제로 재생된 적이 있는가
+let kickFail = '';          // 마지막 play() 거부 사유 (진단용)
 let needRebuild = false;    // 킥보다 먼저 태어난 컨텍스트를 새로 파야 하는가
 function sessionKick() {
   try {
@@ -87,8 +92,12 @@ function sessionKick() {
         if (ctx) needRebuild = true;
       });
     }
-    if (kickEl.paused) kickEl.play().catch(() => { /* 제스처 밖이면 다음 기회에 */ });
-  } catch { /* Audio 없는 환경 */ }
+    if (kickEl.paused)
+      kickEl.play().then(() => { kickFail = ''; })
+        // 거부 사유를 삼키면 안 된다 — NotAllowedError(자동재생 차단)와
+        // NotSupportedError(미디어를 못 연다)는 조치가 전혀 다르다.
+        .catch(e => { kickFail = (e && e.name) || String(e); });
+  } catch (e) { kickFail = 'Audio:' + ((e && e.name) || e); }
 }
 
 /** 컨텍스트만 버린다 (다시 만드는 건 제스처 안에서 ac() 가 한다) */
@@ -416,6 +425,8 @@ export function audioState() {
     재생성대기: needRebuild,
     제스처: gestures + (lastGesture ? '(' + lastGesture + ')' : ''),
     킥오류: kickEl && kickEl.error ? kickEl.error.code : '없음',
+    킥거부: kickFail || '없음',
+    깨우기거부: resumeFail || '없음',
     팩: pack ? Object.keys(pack).length + '문구' : '없음(로딩 중이거나 실패)',
     킥: kickEl
       ? (kickEl.error ? '오류 ' + kickEl.error.code

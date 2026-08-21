@@ -6,7 +6,7 @@
      예전 캐시를 계속 쓴다 (가장 자주 겪는 함정).
    ============================================================ */
 
-const VERSION = 'v40';
+const VERSION = 'v41';
 const CACHE = `ainori-${VERSION}`;
 
 const SHELL = [
@@ -61,7 +61,18 @@ self.addEventListener('activate', (e) => {
 
 /* 네트워크 우선 + 실패하면 캐시.
    캐시 우선으로 하면 코드를 고쳐도 아이패드가 옛날 화면을 계속 보여줘서
-   "왜 안 바뀌지?" 로 시간을 버리게 된다. 오프라인은 캐시 폴백으로 충분하다. */
+   "왜 안 바뀌지?" 로 시간을 버리게 된다. 오프라인은 캐시 폴백으로 충분하다.
+
+   ★ "네트워크 우선" 만으로는 부족하다. 여기서 부르는 fetch() 도 브라우저의
+     HTTP 캐시를 먼저 본다 — GitHub Pages 는 `cache-control: max-age=600` 을
+     주므로, 그 사이에는 서버에 가지도 않고 옛 파일이 그대로 돌아온다.
+     그래서 `cache:'no-cache'` 로 **항상 서버에 물어본다**. 안 바뀐 파일은
+     304 로 끝나서 비용이 거의 없고, 바뀐 파일은 반드시 새것을 받는다. */
+const netFirst = (req) => {
+  try { return fetch(new Request(req, { cache: 'no-cache' })); }
+  catch { return fetch(req); }        // Request 재구성이 막힌 환경 폴백
+};
+
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
@@ -69,7 +80,7 @@ self.addEventListener('fetch', (e) => {
   // 206 응답을 cache.put 하면 예외가 나고, 끼어들 이유도 없다.
   if (req.headers.get('range')) return;
   e.respondWith(
-    fetch(req)
+    netFirst(req)
       .then(res => {
         if (res && res.ok && res.status === 200) {
           const copy = res.clone();
