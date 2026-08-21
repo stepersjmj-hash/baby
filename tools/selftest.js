@@ -7,6 +7,12 @@
   const pctx = paint.getContext('2d');
   const log = [];
 
+  // 화면을 막 열었으면 종이 크기가 아직 안 잡혔을 수 있다 (ResizeObserver 가
+  // 잡아 준다). 준비될 때까지 기다린다 — 안 그러면 작은 캔버스에 그렸다가
+  // 크기가 바뀌면서 지워져 "전부 0px" 로 보인다.
+  for (let i = 0; i < 60 && document.getElementById('c-paint').width < 400; i++) await new Promise(r => setTimeout(r, 50));
+
+
   const inkCount = () => {
     const d = pctx.getImageData(0, 0, paint.width, paint.height).data;
     let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 8) n++;
@@ -77,7 +83,10 @@
   log.push(`undo: ${u === b0 ? 'OK' : `FAIL(${u} vs ${b0})`}`);
   log.push(`redo: ${Math.abs(r - b1) < 40 ? 'OK' : `FAIL(${r} vs ${b1})`}`);
 
-  // 4) 지우개
+  // 4) 지우개 — 지울 게 없으면 0 이 나온다. 밑그림이 무작위라 그 자리가
+  //    비어 있을 수 있으니, 먼저 그 자리에 한 줄 긋고 지운다.
+  pick('crayon');
+  await stroke(0.35, 0.85, 0.65, 0.85);
   pick('eraser');
   const e0 = inkCount();
   await stroke(0.35, 0.85, 0.65, 0.85);

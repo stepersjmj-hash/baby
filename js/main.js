@@ -4,6 +4,7 @@
 
 import { initColoring } from './coloring/index.js';
 import { initPractice } from './trace/index.js';
+import { initVideo } from './video/index.js';
 import { initPuzzle } from './puzzle/index.js';
 import { initSpot } from './spot/index.js';
 import { initCount } from './count/index.js';
@@ -58,8 +59,19 @@ const ACTIVITIES = [
   { id: 'count',    group: 'think',  name: '세어보기',      desc: '몇 개일까?', ready: true },
   { id: 'spot',     group: 'think',  name: '다른 그림 찾기', desc: '눈썰미 대결', ready: true },
 
-  { id: 'sort',     group: 'soon',   name: '모양 분류',     desc: '끌어다 담기' }
+  { id: 'sort',     group: 'soon',   name: '모양 분류',     desc: '끌어다 담기' },
+
+  /* 숨김 — 설정에서 켜야 홈에 나온다. 그리기 앱에 영상이 늘 보이면
+     아이가 그것만 찾는다. 부모가 열어 주는 자리다. */
+  { id: 'video',    group: 'create', name: '영상 보기',     desc: '오늘의 영상', ready: true,
+    hidden: true }
 ];
+
+/* ── 영상 보기 (숨김 기능) ────────────────────────────────
+   기본은 꺼짐. 켜면 홈 "창작" 갈래에 카드가 나타난다.
+   ★ buildHome() 이 이걸 부르므로 **홈보다 먼저** 선언돼야 한다. */
+const VIDEO_KEY = 'haichu.video';
+const videoOn = () => localStorage.getItem(VIDEO_KEY) === 'on';
 
 /* ── 화면 전환 ─────────────────────────────────────────────
    따라 그리기류 다섯(선 긋기·한글·숫자·미로·점 잇기)은 화면이 같아서
@@ -68,7 +80,7 @@ const SCREEN_OF = { coloring: 'coloring', photo: 'coloring',
                     trace: 'trace', hangul: 'trace', english: 'trace',
                     names: 'trace',
                     number: 'trace', maze: 'trace', dots: 'trace', puzzle: 'puzzle',
-                    spot: 'spot', count: 'count' };
+                    spot: 'spot', count: 'count', video: 'video' };
 
 function show(name) {
   for (const s of document.querySelectorAll('.screen')) s.classList.remove('is-active');
@@ -90,7 +102,7 @@ function buildHome() {
   const wrap = $('activity-groups');
   wrap.innerHTML = '';
   for (const g of GROUPS) {
-    const items = ACTIVITIES.filter(a => a.group === g.id);
+    const items = ACTIVITIES.filter(a => a.group === g.id && (!a.hidden || videoOn()));
     if (!items.length) continue;
 
     const box = document.createElement('div');
@@ -182,7 +194,8 @@ const ACTIVITY_APPS = {
   english: practice, names: practice,
   puzzle: initPuzzle({ toast, goHome }),
   spot: initSpot({ toast, goHome }),
-  count: initCount({ toast, goHome })
+  count: initCount({ toast, goHome }),
+  video: initVideo({ goHome })
 };
 
 buildHome();
@@ -230,6 +243,19 @@ for (const [id, nm, desc] of [['hand-left', '왼손', '왼쪽에 손을 얹어�
   });
 }
 applyHand();
+
+function applyVideo() {
+  const b = $('opt-video');
+  b.classList.toggle('is-on', videoOn());
+  b.setAttribute('aria-pressed', String(videoOn()));
+}
+$('opt-video').addEventListener('click', () => {
+  localStorage.setItem(VIDEO_KEY, videoOn() ? 'off' : 'on');
+  applyVideo();
+  buildHome();                       // 카드가 바로 나타나거나 사라진다
+  sfx.tap();
+});
+applyVideo();
 
 $('btn-settings').addEventListener('click', () => { sfx.tap(); $('sheet-settings').hidden = false; });
 $('btn-settings-close').addEventListener('click', () => { $('sheet-settings').hidden = true; });

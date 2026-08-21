@@ -220,8 +220,45 @@
       <button class="hand-card" id="hand-right" type="button" data-hand="right"></button>
     </div>
     <p class="panel-note">그리는 화면에서는 손 반대쪽에 버튼을 모아, 손바닥이 닿아도 눌리지 않아요.</p>
+
+    <p class="panel-q">영상 보기</p>
+    <button class="opt-card" id="opt-video" type="button" aria-pressed="false">
+      <span class="opt-text">
+        <span class="nm">홈에 보이기</span>
+        <span class="desc">꺼 두면 홈에서 사라져요</span>
+      </span>
+      <span class="switch" aria-hidden="true"><i></i></span>
+    </button>
   </div>
 </div>
+
+<!-- ───────────────────────── 영상 보기 ───────────────────────── -->
+<section id="screen-video" class="screen">
+
+  <div class="tray tray-top">
+    <div class="tools" id="video-strip"></div>
+  </div>
+
+  <div class="stage" id="video-stage">
+    <div class="paper" id="video-paper">
+      <video id="video-player" playsinline controls preload="metadata"></video>
+      <img id="video-cover" alt="" hidden>
+      <div class="video-empty" id="video-empty" hidden></div>
+      <div class="paper-rings" aria-hidden="true"></div>
+    </div>
+  </div>
+
+  <div class="tray tray-bottom">
+    <button data-icon="home" class="rbtn" id="btn-video-home" type="button"></button>
+    <div class="spacer"></div>
+    <button data-icon="prev" class="rbtn" id="btn-video-prev" type="button"
+            aria-label="이전 시리즈"></button>
+    <span class="lvl-name" id="video-name"></span>
+    <button data-icon="next" class="rbtn" id="btn-video-next" type="button"
+            aria-label="다음 시리즈"></button>
+    <div class="palm" aria-hidden="true"></div>
+  </div>
+</section>
 
 <section id="screen-gallery" class="screen">
   <header class="home-head">

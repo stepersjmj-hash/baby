@@ -19,7 +19,7 @@
 import { AREA, CARDS, CARD_W, CARD_H, LEVELS, buildCount, COUNT_SAY, GAE } from './levels.js';
 import { fitPaper, setOrigin } from '../core/fit.js';
 import { sfx, say } from '../core/audio.js';
-import { STAR } from '../core/icons.js';
+import { STAR, picIcon } from '../core/icons.js';
 
 const DPR = Math.min(window.devicePixelRatio || 1, 2);
 const DONE_KEY = 'countDone';
@@ -47,9 +47,9 @@ export function initCount({ toast, goHome }) {
 
   /* 물건 흩는 곳(AREA)과 숫자 카드 줄만 쓴다 — 그 상자를 종이에 꽉 채운다 */
   const BOX = {
-    x: AREA.x - 14, y: AREA.y - 14,
+    x: AREA.x - 14, y: 34,                              // 위쪽은 질문 글자 자리
     w: AREA.w + 28,
-    h: (CARDS[0].y + CARD_H / 2 + 14) - (AREA.y - 14)
+    h: (CARDS[0].y + CARD_H / 2 + 14) - 34
   };
 
   function doLayout() {
@@ -64,14 +64,35 @@ export function initCount({ toast, goHome }) {
     redrawAll();
   }
 
+  /* 그림은 SVG 라 캔버스에 바로 못 찍는다 — 이미지로 한 번 구워 캐시한다.
+     ★ 이미지로 쓰는 SVG 에는 xmlns 가 있어야 한다 (없으면 조용히 로드 실패). */
+  const artCache = new Map();
+  function pic(key) {
+    let im = artCache.get(key);
+    if (!im) {
+      im = new Image();
+      im.onload = () => { if (W) redrawAll(); };
+      im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+        picIcon(key, 128).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" '));
+      artCache.set(key, im);
+    }
+    return (im.complete && im.naturalWidth) ? im : null;
+  }
+
   /* ── 그리기 ───────────────────────────────────────────── */
   function drawBoard() {
     clear(bctx);
-    bctx.save();
+    // 질문은 소리로 읽어 주지만 화면에도 적는다 — 부모가 같이 볼 때 쓴다
+    bctx.fillStyle = '#8a7a5c';
+    bctx.font = `800 ${30 * S}px system-ui,-apple-system,sans-serif`;
     bctx.textAlign = 'center'; bctx.textBaseline = 'middle';
-    bctx.font = `${quiz.size * S}px ${EMOJI_FONT}`;
-    for (const it of quiz.items) bctx.fillText(it.e, it.x * S, it.y * S);
-    bctx.restore();
+    bctx.fillText(level.ask, 500 * S, 120 * S);
+
+    const z = quiz.size * 1.15 * S;      // 아이콘은 상자 안에 여백이 있어 조금 키운다
+    for (const it of quiz.items) {
+      const im = pic(it.e);
+      if (im) bctx.drawImage(im, it.x * S - z / 2, it.y * S - z / 2, z, z);
+    }
 
     quiz.choices.forEach((n, k) => {                     // 숫자 카드
       const { x, y } = CARDS[k];
@@ -100,8 +121,8 @@ export function initCount({ toast, goHome }) {
     marked.forEach((idx, k) => {                         // 센 순서대로 번호 배지
       const it = quiz.items[idx];
       const r = quiz.size * 0.52;
-      mctx.strokeStyle = `hsl(${(k * 47) % 360} 82% 52%)`;
-      mctx.lineWidth = 6 * S;
+      mctx.strokeStyle = '#7ab8f2';                      // 센 것 = 파란 동그라미
+      mctx.lineWidth = 5 * S;
       mctx.beginPath(); mctx.arc(it.x * S, it.y * S, r * S, 0, 6.283); mctx.stroke();
       const bx = it.x + r * 0.8, by = it.y - r * 0.8;
       mctx.fillStyle = '#ff8a3d';
@@ -239,7 +260,8 @@ export function initCount({ toast, goHome }) {
       b.className = 'lvl' + (L.id === level?.id ? ' is-on' : '');
       b.dataset.lvl = L.id;
       b.dataset.hard = L.hard;
-      b.innerHTML = `<span class="ico">${L.ico}</span><span class="lbl">${L.name}</span>` +
+      b.innerHTML = `<span class="ico art">${picIcon(L.ico, 34)}</span>` +
+                    `<span class="lbl">${L.name}</span>` +
                     (done.has(L.id) ? `<span class="star">${STAR}</span>` : '');
       b.addEventListener('click', () => { sfx.tap(); openLevel(i); });
       strip.appendChild(b);

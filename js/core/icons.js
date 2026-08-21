@@ -30,6 +30,9 @@ export const solid = (inner, size = 32) =>
    버튼 하나가 여러 화면에 있으므로(홈 버튼만 5개) 여기 한 줄이
    전부에 반영된다. index.html 의 data-icon 이 이 표의 키다. */
 const PATHS = {
+  film:   '<rect x="6" y="12" width="36" height="24" rx="4"/>' +
+          '<path d="M14 12v24M34 12v24"/>' +
+          '<path d="M6 20h8M6 28h8M34 20h8M34 28h8"/>',
   home:   '<path d="M8 22L24 8l16 14v16a3 3 0 0 1-3 3H11a3 3 0 0 1-3-3z"/>' +
           '<path d="M19 41V29h10v12"/>',
   undo:   '<path d="M14 19h16a9 9 0 1 1 0 18h-7"/><path d="M20 11l-8 8 8 8"/>',
@@ -141,6 +144,8 @@ export const ACT_ICON = {
   count:    act('<circle cx="14" cy="31" r="7"/><circle cx="32" cy="31" r="7"/>' +
                 '<path d="M14 24v-7m18 7v-7m-18 0c2-2 4-2 6 0m10 0c2-2 4-2 6 0"/>'),
   spot:     act('<circle cx="20" cy="20" r="11"/><path d="M29 29l11 11"/>'),
+  video:    act('<rect x="5" y="11" width="38" height="26" rx="6"/>' +
+                '<path d="M20 19l10 5-10 5z"/>'),
   sort:     act('<rect x="8" y="8" width="13" height="13" rx="3"/>' +
                 '<circle cx="35" cy="14" r="7"/><path d="M17 40l7-11 7 11z"/>')
 };
@@ -231,6 +236,8 @@ const LVL_PATHS = {
 
 /** 단계 칩 아이콘. 선 긋기는 선, 미로는 면 — 굵기는 아이콘마다 다르다 */
 export function lvlIcon(course, id, size = 32) {
+  // 점 잇기는 단계 id 가 곧 그림 이름이다 (house · crown · fish · car · star)
+  if (course === 'dots') return picIcon(id, size);
   const v = LVL_PATHS[course + ':' + id];
   if (!v) return '';
   if (course === 'maze') return solid(v, size);
@@ -262,3 +269,120 @@ export const STAGE_ART = {
                 '<path d="M13 33.2c3.7 7.4 18.5 7.4 22 0" stroke="#fff" stroke-width="3.7"' +
                 ' fill="none" stroke-linecap="round"/>', 128)
 };
+
+/* ── 콘텐츠 그림 아이콘 (점 잇기 · 세어보기) ──────────────────
+   칩과 스테이지에 **같은 그림**을 쓴다. 아이는 칩의 그림을 보고
+   무슨 문제인지 알고, 스테이지에서 그 물건을 센다 — 둘이 다르면
+   안 된다. 그래서 세어보기는 방해꾼까지 전부 여기 있다.
+
+   말랑 채움(면) 48×48. 핸드오프에 있는 것은 그대로 가져오고,
+   앱에만 있는 물건은 같은 결로 새로 그렸다.
+   원본: design_handoff_home_redesign/서브화면 v2.dc.html */
+const PIC_PATHS = {
+  star:     '<path d="M24 6l5 10.5 11.5 1.5-8.4 8 2.2 11.4L24 32l-10.3 5.4 2.2-11.4-8.4-8L19 16.5z" fill="#ffd166"/>',   // 핸드오프 별
+  balloon:  '<ellipse cx="24" cy="18" rx="11" ry="13" fill="#ff8fc4"/>' +
+            '<path d="M24 31l-2 3h4z" fill="#e06aa5"/>' +
+            '<path d="M24 34c-2 4 2 6 0 10" stroke="#b0a08a" stroke-width="2.5" fill="none" stroke-linecap="round"/>',   // 핸드오프 풍선
+  house:    '<path d="M9 22L24 9l15 13v14a3 3 0 0 1-3 3H12a3 3 0 0 1-3-3z" fill="#ffb47a"/>' +
+            '<path d="M6 23L24 7l18 16" fill="none" stroke="#e06a1f" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>' +
+            '<rect x="19" y="26" width="10" height="13" rx="2" fill="#8a5f3a"/>',   // 핸드오프 집
+  boat:     '<path d="M8 30h32l-5 8H13z" fill="#b07a4a"/>' +
+            '<path d="M24 8v20m0-20l12 16H24" stroke="#4a90ff" stroke-width="3" fill="#bfe4ff" stroke-linejoin="round"/>' +
+            '<path d="M4 42c4-3 8-3 12 0s8 3 12 0 8-3 12 0" stroke="#7fd0e8" stroke-width="3" fill="none" stroke-linecap="round"/>',   // 핸드오프 배
+  butterfly:'<g fill="#9b7bff"><path d="M22 24c-8-14-20-10-16 0 3 8 12 6 16 0z"/>' +
+            '<path d="M26 24c8-14 20-10 16 0-3 8-12 6-16 0z"/></g><g fill="#c9b3ff">' +
+            '<circle cx="12" cy="30" r="4"/><circle cx="36" cy="30" r="4"/></g>' +
+            '<rect x="22" y="14" width="4" height="20" rx="2" fill="#3a2f22"/>' +
+            '<path d="M22 14l-3-5m8 5l3-5" stroke="#3a2f22" stroke-width="2" stroke-linecap="round"/>',   // 핸드오프 나비
+  rocket:   '<path d="M24 4c7 5 9 14 6 24H18c-3-10-1-19 6-24z" fill="#e8e2f5"/>' +
+            '<circle cx="24" cy="16" r="4" fill="#7fd0e8"/>' +
+            '<path d="M18 24l-6 8 7-2m11-6l6 8-7-2" fill="#ff6b6b"/>' +
+            '<path d="M22 30h4l-2 10z" fill="#ffb02e"/>',   // 핸드오프 로켓
+  apple:    '<path d="M24 14c-8-4-16 2-14 12 2 9 8 16 14 16s12-7 14-16c2-10-6-16-14-12z" fill="#ff5a5a"/>' +
+            '<path d="M24 13c0-4 2-6 5-7" stroke="#8a5f3a" stroke-width="3" fill="none" stroke-linecap="round"/>' +
+            '<path d="M28 9c3-1 5 0 6 2-2 2-5 2-6-2z" fill="#4fbf5a"/>',   // 핸드오프 사과
+  strawberry:'<path d="M24 12c-9 0-14 6-12 14 1 8 7 16 12 16s11-8 12-16c2-8-3-14-12-14z" fill="#ff5f7a"/>' +
+             '<path d="M24 12l-5-4m5 4l5-4m-5 4V5" stroke="#4fbf5a" stroke-width="3.5" stroke-linecap="round"/>' +
+             '<g fill="#ffe6a3"><circle cx="18" cy="22" r="1.4"/><circle cx="28" cy="20" r="1.4"/>' +
+             '<circle cx="24" cy="28" r="1.4"/><circle cx="19" cy="33" r="1.4"/>' +
+             '<circle cx="30" cy="31" r="1.4"/></g>',   // 핸드오프 딸기
+  duck:     '<ellipse cx="22" cy="30" rx="14" ry="10" fill="#ffd24d"/>' +
+            '<circle cx="32" cy="18" r="8" fill="#ffd24d"/><path d="M39 18l6 2-6 3z" fill="#ff8a3d"/>' +
+            '<circle cx="33" cy="16" r="1.6" fill="#3a2f22"/>' +
+            '<path d="M12 28c-3 2-4 5-3 8" stroke="#e8b32e" stroke-width="3" fill="none" stroke-linecap="round"/>',   // 핸드오프 오리
+  fish:     '<ellipse cx="27" cy="24" rx="15" ry="10" fill="#4aa8e8"/>' +
+            '<path d="M13 24L3 16v16z" fill="#2f8ccc"/>' +
+            '<path d="M26 14c2.5 2 4 4.5 4.5 7-3 0-6-1-8-3z" fill="#7fd0e8"/>' +
+            '<circle cx="35" cy="21" r="3" fill="#fff"/>' +
+            '<circle cx="35.8" cy="21" r="1.5" fill="#2a4a6a"/>' +
+            '<path d="M20 27c3 2 7 2 10 0" stroke="#2f8ccc" stroke-width="2" fill="none" stroke-linecap="round"/>',
+  flower:   '<g fill="#ff8fc4"><circle cx="24" cy="12" r="6.5"/><circle cx="35" cy="20" r="6.5"/>' +
+            '<circle cx="31" cy="33" r="6.5"/><circle cx="17" cy="33" r="6.5"/>' +
+            '<circle cx="13" cy="20" r="6.5"/></g><circle cx="24" cy="23.5" r="5.5" fill="#ffd166"/>',   // 핸드오프 꽃길
+  moon:     '<path d="M30 6a17 17 0 1 0 12 29A17 17 0 0 1 30 6z" fill="#ffd166"/>' +
+            '<circle cx="38" cy="12" r="2" fill="#ffe6a3"/>' +
+            '<circle cx="43" cy="20" r="1.4" fill="#ffe6a3"/>',   // 핸드오프 달나라
+  car:      '<path d="M8 28l4-10c1-2 2-3 4-3h12c2 0 3 1 4 3l4 10z" fill="#ff6b6b"/>' +
+            '<rect x="5" y="27" width="38" height="9" rx="4" fill="#e05252"/>' +
+            '<circle cx="15" cy="37" r="5" fill="#3a3a3a"/><circle cx="33" cy="37" r="5" fill="#3a3a3a"/>' +
+            '<circle cx="15" cy="37" r="2" fill="#bdbdbd"/><circle cx="33" cy="37" r="2" fill="#bdbdbd"/>' +
+            '<rect x="18" y="18" width="12" height="7" rx="2" fill="#bfeaf5"/>',   // 핸드오프 자동차
+  crown:    '<path d="M8 33l-2-17 10 7 8-12 8 12 10-7-2 17z" fill="#ffd166"/>' +
+            '<rect x="8" y="33" width="32" height="7" rx="3.5" fill="#e8b32e"/>' +
+            '<circle cx="24" cy="24" r="2.6" fill="#ff5f9e"/>' +
+            '<circle cx="14" cy="26" r="2" fill="#7fd0e8"/><circle cx="34" cy="26" r="2" fill="#7fd0e8"/>',
+  ball:     '<circle cx="24" cy="24" r="17" fill="#fffdf7"/>' +
+            '<path d="M24 7a17 17 0 0 0 0 34c-5-4-8-10-8-17s3-13 8-17z" fill="#ff5a5a"/>' +
+            '<path d="M24 7a17 17 0 0 1 0 34c5-4 8-10 8-17s-3-13-8-17z" fill="#4a90ff"/>' +
+            '<circle cx="24" cy="24" r="17" fill="none" stroke="#e0d5bd" stroke-width="2"/>',
+  cookie:   '<circle cx="24" cy="24" r="16" fill="#e0a95e"/><g fill="#6b4423">' +
+            '<circle cx="18" cy="19" r="2.6"/><circle cx="30" cy="21" r="2.2"/>' +
+            '<circle cx="22" cy="29" r="2.4"/><circle cx="31" cy="30" r="1.8"/>' +
+            '<circle cx="15" cy="27" r="1.6"/></g>',
+  pear:     '<path d="M24 42c-6.5 0-11-4.5-11-10 0-4.2 2.2-6.6 3.9-9.2 1.6-2.4 2.6-4.6 2.6-7 0-3.6 2-5.8 4.5-5.8s4.5 2.2 4.5 5.8c0 2.4 1 4.6 2.6 7 1.7 2.6 3.9 5 3.9 9.2 0 5.5-4.5 10-11 10z" fill="#cfe06a"/>' +
+            '<path d="M24 10V6" stroke="#8a5f3a" stroke-width="2.8" stroke-linecap="round"/>' +
+            '<path d="M25 8c3.2-2.6 7-1.8 7.6.8-2.2 2.2-6.2 2-7.6-.8z" fill="#4fbf5a"/>' +
+            '<ellipse cx="19" cy="30" rx="2.6" ry="4" fill="#e2ee9a"/>',
+  lemon:    '<path d="M5 24c3.5-4.5 10-10 19-10s15.5 5.5 19 10c-3.5 4.5-10 10-19 10S8.5 28.5 5 24z"' +
+            ' fill="#ffd24d"/>' +
+            '<path d="M40 24c1.5-1.4 2.6-2.6 3-3-0.4-.4-1.5-1.6-3-3z" fill="#e8b32e"/>' +
+            '<path d="M8 24c-1.5-1.4-2.6-2.6-3-3 .4-.4 1.5-1.6 3-3z" fill="#e8b32e"/>' +
+            '<ellipse cx="19" cy="20" rx="5" ry="2.4" fill="#ffe8a3"/>',
+  chick:    '<circle cx="24" cy="28" r="13" fill="#ffd24d"/>' +
+            '<circle cx="24" cy="15" r="9" fill="#ffd24d"/><path d="M24 15l-6 2 6 3z" fill="#ff8a3d"/>' +
+            '<circle cx="21" cy="13" r="1.7" fill="#3a2f22"/>' +
+            '<circle cx="28" cy="13" r="1.7" fill="#3a2f22"/>' +
+            '<path d="M18 40l-3 3m12-3l3 3" stroke="#ff8a3d" stroke-width="3" stroke-linecap="round"/>',
+  bird:     '<path d="M10 30c0-8 6-13 13-13 7 0 12 4 13 10l6 3-6 3c-2 5-7 8-13 8-7 0-13-4-13-11z" fill="#4aa8e8"/>' +
+            '<path d="M16 24c4-4 10-4 13 0-4 5-9 5-13 0z" fill="#7fd0e8"/>' +
+            '<circle cx="30" cy="24" r="1.8" fill="#fff"/><path d="M36 27l6-2-6-2z" fill="#ff8a3d"/>',
+  cloud:    '<path d="M15 35a8 8 0 0 1 1-16 10 10 0 0 1 19-2 8 8 0 0 1 2 18z" fill="#cfdce6"/>' +
+            '<path d="M18 32a5 5 0 0 1 1-10" stroke="#eef3f7" stroke-width="3" fill="none" stroke-linecap="round"/>',
+  octopus:  '<path d="M12 24a12 12 0 0 1 24 0v6H12z" fill="#b06be0"/>' +
+            '<path d="M13 30c-2 5-5 7-8 7 3 2 7 1 9-3m4 2c-1 6-3 8-5 10 4 0 7-3 8-7m4 1c1 6 3 8 5 10-4 0-7-3-8-7m5-6c2 5 5 7 8 7-3 2-7 1-9-3" fill="#c98fe8"/>' +
+            '<circle cx="19" cy="22" r="2.2" fill="#fff"/><circle cx="29" cy="22" r="2.2" fill="#fff"/>' +
+            '<circle cx="19" cy="22" r="1.1" fill="#3a2f22"/>' +
+            '<circle cx="29" cy="22" r="1.1" fill="#3a2f22"/>',
+  crab:     '<ellipse cx="24" cy="28" rx="14" ry="10" fill="#ff5a5a"/>' +
+            '<circle cx="18" cy="21" r="3" fill="#ff5a5a"/><circle cx="30" cy="21" r="3" fill="#ff5a5a"/>' +
+            '<circle cx="18" cy="21" r="1.4" fill="#fff"/><circle cx="30" cy="21" r="1.4" fill="#fff"/>' +
+            '<path d="M10 22c-4-1-6-3-6-6 3 0 6 2 7 5zm28 0c4-1 6-3 6-6-3 0-6 2-7 5z" fill="#e04a3a"/>' +
+            '<path d="M12 36l-4 5m10-3l-2 6m18-8l4 5m-10-3l2 6" stroke="#e04a3a" stroke-width="3" stroke-linecap="round"/>',
+  donut:    '<circle cx="24" cy="24" r="16" fill="#e0a95e"/>' +
+            '<path d="M24 8a16 16 0 0 1 14 8c-3 6-9 7-14 6s-10 1-13 5A16 16 0 0 1 24 8z" fill="#ff8fc4"/>' +
+            '<circle cx="24" cy="24" r="5.5" fill="#fffdf7"/>' +
+            '<g stroke-width="2.4" stroke-linecap="round"><path d="M17 14l2 3" stroke="#7fd0e8"/>' +
+            '<path d="M27 12l-1 3" stroke="#ffd166"/><path d="M33 18l-3 1" stroke="#4fbf7a"/></g>',
+  cupcake:  '<path d="M13 22h22l-3 15a3 3 0 0 1-3 3H19a3 3 0 0 1-3-3z" fill="#f2d9b0"/>' +
+            '<path d="M13 22h22l-2 5H15z" fill="#e0c294"/>' +
+            '<path d="M24 6c5 0 9 4 9 8 0 5-4 8-9 8s-9-3-9-8c0-4 4-8 9-8z" fill="#ff8fc4"/>' +
+            '<circle cx="24" cy="7" r="2.4" fill="#ff5a5a"/>',
+  heart:      '<path d="M24 41.5C24 41.5 5 29.5 5 18.2 5 12.3 9.6 7.6 15.3 7.6 c3.7 0 7 2 8.7 5 1.7-3 5-5 8.7-5 5.7 0 10.3 4.7 10.3 10.6 0 11.3-19 23.3-19 23.3z"' +
+              ' fill="#ff5a7a"/>' +
+              '<path d="M13 15c-1.6 1.4-2.4 3.3-2.3 5.3" stroke="#ff9fb3" stroke-width="3"' +
+              ' fill="none" stroke-linecap="round"/>',
+};
+
+/** 콘텐츠 그림. 없는 키면 빈 문자열 */
+export const picIcon = (key, size = 34) =>
+  (PIC_PATHS[key] ? solid(PIC_PATHS[key], size) : '');

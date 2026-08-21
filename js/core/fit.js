@@ -29,7 +29,10 @@ const PAD = 14;             // .stage 의 padding 과 같아야 한다
  */
 export function fitPaper(stage, paper, box, dpr) {
   const st = stage.getBoundingClientRect();
-  if (!st.width || !st.height) return null;             // 아직 화면에 안 붙었다
+  // 화면을 막 여는 순간에는 크기가 0 이거나 몇 px 이다. 그때 종이를 박아 두면
+  // 최소 크기(80×56)로 그렸다가 ResizeObserver 가 다시 부를 때 확 커져서
+  // 깜빡인다 — 쓸 만한 크기가 될 때까지 아무것도 하지 않는다.
+  if (st.width < 60 || st.height < 60) return null;
 
   const w = Math.max(80, Math.floor(st.width - PAD * 2));
   const h = Math.max(56, Math.floor(st.height - PAD * 2));

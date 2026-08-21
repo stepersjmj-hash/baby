@@ -48,7 +48,10 @@ const COURSES = {
      같은 미로가 계속 나오면 금방 지루해진다 (칸 수·id 는 그대로라 별은 남는다). */
   maze:   { levels: MAZES,   guide: false, tol: 40, key: 'mazeDone',   voice: 'scurry',
             fresh: newMazes, chip: 34, art: { from: 'runner', to: 'level' } },
-  dots:   { levels: DOTS,    guide: false, tol: 60, key: 'dotsDone',   voice: null },
+  /* 점 잇기: 닫힌 도형이라 도착점이 곧 출발점이다 — 도착 그림을 그리면
+     연필과 겹친다. 선은 단색(ink)에 가늘게, 점과 번호가 주인공이다. */
+  dots:   { levels: DOTS,    guide: false, tol: 60, key: 'dotsDone',   voice: null,
+            chip: 34, art: { from: 'pen' }, ink: '#ffb27a', fill: 10 },
   /* 이름 쓰기: 음절 블록이 작아 길·표시를 가늘게(road/fill/icon/badge),
      full 이면 열 때 이름을 미리 읽지 않고(intro 만) 완성 후 📣 로 듣는다 */
   names:  { levels: NAMES,   guide: true,  tol: 28, key: 'namesDone',  voice: 'write',
@@ -192,15 +195,26 @@ export function initPractice({ toast, goHome }) {
     }
 
     if (level.dots) {                                   // 점 잇기: 번호 붙은 점
+      // 완성 모양을 아주 옅은 점선으로 귀띔한다 (dasharray 가 성겨서
+      // 형태가 어렴풋이만 보인다 — 다 이었을 때의 놀라움은 남는다)
+      gctx.save();
+      gctx.setLineDash([2 * S, 13 * S]);
+      gctx.strokeStyle = '#cbb896'; gctx.lineWidth = 4 * S;
+      for (const p of level.paths) { pathTo(gctx, p, 0, p.length - 1); gctx.stroke(); }
+      gctx.restore();
+
+      /* 점은 세 가지 모습이다 — 지나온 점(파랑 채움) · 지금 갈 점(주황) ·
+         아직 안 간 점(크림 + 테두리). 색으로만 알린다. */
       level.dots.forEach(([x, y], i) => {
-        const hit = i < dotsHit;                        // 이미 지나온 점은 색이 찬다
-        gctx.fillStyle = hit ? '#ffd166' : '#fff';
-        gctx.strokeStyle = hit ? '#ff8a3d' : '#c9a86a';
-        gctx.lineWidth = 3 * S;
-        gctx.beginPath(); gctx.arc(x * S, y * S, 26 * S, 0, 6.283);
-        gctx.fill(); gctx.stroke();
-        gctx.fillStyle = hit ? '#7a4a12' : '#6b5c47';
-        gctx.font = `800 ${28 * S}px system-ui,sans-serif`;
+        const hit = i < dotsHit, next = i === dotsHit;
+        gctx.beginPath(); gctx.arc(x * S, y * S, (next ? 24 : 22) * S, 0, 6.283);
+        gctx.fillStyle = hit ? '#7ab8f2' : next ? '#ff8a3d' : '#fffdf7';
+        gctx.fill();
+        if (!hit && !next) {
+          gctx.strokeStyle = '#cbb896'; gctx.lineWidth = 3 * S; gctx.stroke();
+        }
+        gctx.fillStyle = (hit || next) ? '#fff' : '#8a7a5c';
+        gctx.font = `800 ${22 * S}px system-ui,sans-serif`;
         gctx.textAlign = 'center'; gctx.textBaseline = 'middle';
         gctx.fillText(String(i + 1), x * S, y * S + S);
       });
@@ -216,8 +230,9 @@ export function initPractice({ toast, goHome }) {
       const p = level.paths[i];
       const target = (i < tracer.stroke) ? p.length - 1 : tracer.index;
       for (let j = filled[i]; j < target; j++) {
-        // 무지개로 흘러가게 — 어디까지 왔는지 한눈에 보인다
-        fctx.strokeStyle = `hsl(${(j / p.length) * 280 + 12} 88% 56%)`;
+        // 무지개로 흘러가게 — 어디까지 왔는지 한눈에 보인다.
+        // 점 잇기만 단색이다(course.ink): 점과 번호가 주인공이라 선이 튀면 안 된다.
+        fctx.strokeStyle = course.ink ?? `hsl(${(j / p.length) * 280 + 12} 88% 56%)`;
         fctx.beginPath();
         fctx.moveTo(p[j].x * S, p[j].y * S);
         fctx.lineTo(p[j + 1].x * S, p[j + 1].y * S);
@@ -286,12 +301,13 @@ export function initPractice({ toast, goHome }) {
     }
 
     const goal = p[p.length - 1];
+    const goalName = level.to ?? course.to;
     const goalArt = artOf(course.art?.to);
     // 단계 아이콘(미로 목적지)은 제 상자 안에 여백이 있어 조금 키워야
     // 주인공과 무게가 맞는다. 별·연필은 그림이 상자를 꽉 채운다.
     if (goalArt) stamp(xctx, goalArt, goal.x * S, goal.y * S,
                        iconSz() * S * (course.art.to === 'level' ? 1.3 : 1));
-    else emoji(xctx, level.to ?? course.to ?? '⭐', goal.x * S, goal.y * S, iconSz() * S);
+    else if (goalName) emoji(xctx, goalName, goal.x * S, goal.y * S, iconSz() * S);
 
     if (!tracer.finished) {
       const head = tracer.head();

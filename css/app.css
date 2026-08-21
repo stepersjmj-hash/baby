@@ -427,3 +427,42 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
   .lvl-name{min-width:80px;font-size:17px}
   :root{--tap:60px}
 }
+
+/* ───────────── 설정: 켜고 끄는 항목 ───────────── */
+.opt-card{
+  display:flex;align-items:center;gap:14px;width:100%;
+  border-radius:22px;padding:16px 18px;background:#f6efe2;border:2px solid transparent;
+  text-align:left;transition:background .14s,border-color .14s;
+}
+.opt-card.is-on{background:var(--sel-bg);border-color:var(--sel-br)}
+.opt-text{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0}
+.opt-card .nm{font-size:20px;font-weight:800}
+.opt-card .desc{font-size:13px;font-weight:700;opacity:.55}
+/* 스위치 — 켜지면 손잡이가 오른쪽으로 */
+.switch{
+  flex-shrink:0;width:64px;height:36px;border-radius:999px;background:#e3d7bf;
+  position:relative;transition:background .16s;
+}
+.switch i{
+  position:absolute;top:3px;left:3px;width:30px;height:30px;border-radius:50%;
+  background:#fff;box-shadow:0 2px 6px rgba(120,84,30,.28);transition:transform .16s;
+}
+.opt-card.is-on .switch{background:var(--sel-br)}
+.opt-card.is-on .switch i{transform:translateX(28px)}
+
+/* ───────────── 영상 보기 ───────────── */
+#screen-video{background:var(--bg)}
+/* 다른 화면은 JS(core/fit.js)가 종이 크기를 박지만 영상은 캔버스가 아니라
+   <video> 라서 그냥 무대를 꽉 채운다 */
+#video-paper{width:100%;height:100%}
+#video-player{position:absolute;inset:0;width:100%;height:100%;background:#000;
+              border-radius:14px;display:block;object-fit:contain}
+/* 시리즈 표지 — 무엇을 볼지 고르는 동안 재생 자리에 걸어 둔다 */
+#video-cover{position:absolute;inset:0;width:100%;height:100%;
+             border-radius:14px;object-fit:contain;background:#fffdf7}
+.video-empty{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  padding:0 32px;text-align:center;font-size:19px;font-weight:700;opacity:.5;
+}
+#video-strip .lvl{width:76px;min-width:76px}
+#video-strip .thumb{width:56px;height:34px;border-radius:8px}
