@@ -1,0 +1,333 @@
+{
+  "_meta": {
+    "title": "유아(3~6세) 필기 교육용 획순 데이터: 한글 자모, 영어 알파벳, 숫자 1~9",
+    "version": "1.0.0",
+    "language": "ko",
+    "coordinate_note": "이 데이터는 '획의 순서와 방향(규칙)'만 정의한다. 실제 트레이싱용 좌표(SVG path 등)는 별도 제작 필요.",
+    "direction_codes": {
+      "R": "왼쪽에서 오른쪽으로 (가로획)",
+      "D": "위에서 아래로 (세로획)",
+      "DL": "오른쪽 위에서 왼쪽 아래로 (왼쪽 삐침)",
+      "DR": "왼쪽 위에서 오른쪽 아래로 (오른쪽 삐침/사선)",
+      "D_R": "아래로 긋다가 꺾어서 오른쪽으로 (ㄴ 모양, 한 획)",
+      "R_D": "오른쪽으로 긋다가 꺾어서 아래로 (ㄱ 모양, 한 획)",
+      "CCW": "반시계 방향 곡선/원 (보통 위에서 시작)",
+      "CW": "시계 방향 곡선",
+      "CURVE": "복합 곡선 (desc 참고)"
+    },
+    "standards_note": {
+      "hangul": "한글 자모의 획순은 어문 규범(한글 맞춤법 등)에 규정되어 있지 않다. 한글 맞춤법 제4항은 자모의 수·순서·이름만 정한다. 아래 데이터는 교육부 초등 국어 교과서 및 쓰기 교본에서 통용되는 관행(사실상 표준)을 따른다.",
+      "english": "영어 알파벳 획순은 국제/국가 공식 표준이 없다. 미국 필기 교육 과정(Zaner-Bloser, D'Nealian, Handwriting Without Tears 등)마다 일부 글자의 획수가 1~2획 다르다. 아래는 유아용 인쇄체(ball-and-stick manuscript)에서 가장 널리 쓰이는 방식이다.",
+      "digits": "숫자 획순도 공식 표준이 없으며 필기 교본 관행을 따른다. 4와 5는 2획, 나머지는 1획으로 가르치는 것이 일반적이다."
+    },
+    "general_principles": [
+      "위에서 아래로 쓴다",
+      "왼쪽에서 오른쪽으로 쓴다",
+      "가로획을 먼저, 세로획을 나중에 쓰는 경우가 많다 (예: ㄷ, ㅜ)",
+      "글자를 이루는 구성 요소는 왼쪽/위쪽 요소부터 쓴다 (예: 쌍자음은 왼쪽 자음 먼저, 음절은 초성→중성→종성)"
+    ]
+  },
+
+  "hangul": {
+    "consonants": [
+      { "char": "ㄱ", "name": "기역", "strokeCount": 1, "strokes": [
+        { "order": 1, "dir": "R_D", "desc": "가로로 긋다가 꺾어 내려긋는다" } ] },
+      { "char": "ㄴ", "name": "니은", "strokeCount": 1, "strokes": [
+        { "order": 1, "dir": "D_R", "desc": "내려긋다가 꺾어 오른쪽으로 긋는다" } ] },
+      { "char": "ㄷ", "name": "디귿", "strokeCount": 2, "strokes": [
+        { "order": 1, "dir": "R", "desc": "위 가로획" },
+        { "order": 2, "dir": "D_R", "desc": "ㄴ 모양 (내려긋다 꺾어 오른쪽)" } ] },
+      { "char": "ㄹ", "name": "리을", "strokeCount": 3, "strokes": [
+        { "order": 1, "dir": "R_D", "desc": "ㄱ 모양" },
+        { "order": 2, "dir": "R", "desc": "가운데 가로획" },
+        { "order": 3, "dir": "D_R", "desc": "ㄴ 모양" } ] },
+      { "char": "ㅁ", "name": "미음", "strokeCount": 3, "strokes": [
+        { "order": 1, "dir": "D", "desc": "왼쪽 세로획" },
+        { "order": 2, "dir": "R_D", "desc": "ㄱ 모양 (위 가로 + 오른쪽 세로)" },
+        { "order": 3, "dir": "R", "desc": "아래 가로획 (막는다)" } ] },
+      { "char": "ㅂ", "name": "비읍", "strokeCount": 4, "strokes": [
+        { "order": 1, "dir": "D", "desc": "왼쪽 세로획" },
+        { "order": 2, "dir": "D", "desc": "오른쪽 세로획" },
+        { "order": 3, "dir": "R", "desc": "가운데 가로획" },
+        { "order": 4, "dir": "R", "desc": "아래 가로획" } ] },
+      { "char": "ㅅ", "name": "시옷", "strokeCount": 2, "strokes": [
+        { "order": 1, "dir": "DL", "desc": "왼쪽 아래로 삐침" },
+        { "order": 2, "dir": "DR", "desc": "삐침 중간쯤에서 오른쪽 아래로" } ] },
+      { "char": "ㅇ", "name": "이응", "strokeCount": 1, "strokes": [
+        { "order": 1, "dir": "CCW", "desc": "맨 위에서 시작해 반시계 방향으로 원을 그린다" } ] },
+      { "char": "ㅈ", "name": "지읒", "strokeCount": 2, "strokes": [
+        { "order": 1, "dir": "R_D", "desc": "가로로 긋다가 꺾어 왼쪽 아래로 삐침 (필기체 기준)" },
+        { "order": 2, "dir": "DR", "desc": "오른쪽 아래로 삐침" } ],
+        "variants": [ "인쇄체(고딕) 기준 3획으로 가르치기도 함: ①가로 ②왼쪽삐침 ③오른쪽삐침" ] },
+      { "char": "ㅊ", "name": "치읓", "strokeCount": 3, "strokes": [
+        { "order": 1, "dir": "R", "desc": "맨 위 짧은 획(꼭지)" },
+        { "order": 2, "dir": "R_D", "desc": "가로로 긋다가 꺾어 왼쪽 아래로 삐침" },
+        { "order": 3, "dir": "DR", "desc": "오른쪽 아래로 삐침" } ],
+        "variants": [ "인쇄체 기준 4획으로 가르치기도 함", "꼭지를 짧은 세로획(D)으로 쓰는 서체도 있음" ] },
+      { "char": "ㅋ", "name": "키읔", "strokeCount": 2, "strokes": [
+        { "order": 1, "dir": "R_D", "desc": "ㄱ 모양" },
+        { "order": 2, "dir": "R", "desc": "가운데 가로획" } ] },
+      { "char": "ㅌ", "name": "티읕", "strokeCount": 3, "strokes": [
+        { "order": 1, "dir": "R", "desc": "맨 위 가로획" },
+        { "order": 2, "dir": "R", "desc": "가운데 가로획" },
+        { "order": 3, "dir": "D_R", "desc": "ㄴ 모양" } ],
+        "variants": [ "①위 가로 ②ㄷ(가운데 가로+ㄴ) 순서로 쓰는 관행도 있음. 규범상 정해진 것은 없음" ] },
+      { "char": "ㅍ", "name": "피읖", "strokeCount": 4, "strokes": [
+        { "order": 1, "dir": "R", "desc": "위 가로획" },
+        { "order": 2, "dir": "D", "desc": "왼쪽 세로획" },
+        { "order": 3, "dir": "D", "desc": "오른쪽 세로획" },
+        { "order": 4, "dir": "R", "desc": "아래 가로획" } ] },
+      { "char": "ㅎ", "name": "히읗", "strokeCount": 3, "strokes": [
+        { "order": 1, "dir": "R", "desc": "맨 위 짧은 획(꼭지)" },
+        { "order": 2, "dir": "R", "desc": "가로획" },
+        { "order": 3, "dir": "CCW", "desc": "ㅇ (반시계 원)" } ],
+        "variants": [ "꼭지를 짧은 세로획(D)으로 쓰는 서체도 있음" ] }
+    ],
+    "double_consonants_rule": {
+      "desc": "쌍자음(ㄲ, ㄸ, ㅃ, ㅆ, ㅉ)은 왼쪽 자음을 먼저 다 쓴 뒤 오른쪽 자음을 쓴다. 각 자음의 획순은 위 단자음과 동일.",
+      "chars": ["ㄲ", "ㄸ", "ㅃ", "ㅆ", "ㅉ"]
+    },
+    "vowels": [
+      { "char": "ㅏ", "name": "아", "strokeCount": 2, "strokes": [
+        { "order": 1, "dir": "D", "desc": "긴 세로획" },
+        { "order": 2, "dir": "R", "desc": "오른쪽 짧은 가로획" } ] },
+      { "char": "ㅑ", "name": "야", "strokeCount": 3, "strokes": [
+        { "order": 1, "dir": "D", "desc": "긴 세로획" },
+        { "order": 2, "dir": "R", "desc": "위쪽 짧은 가로획" },
+        { "order": 3, "dir": "R", "desc": "아래쪽 짧은 가로획" } ] },
+      { "char": "ㅓ", "name": "어", "strokeCount": 2, "strokes": [
+        { "order": 1, "dir": "R", "desc": "왼쪽 짧은 가로획" },
+        { "order": 2, "dir": "D", "desc": "긴 세로획" } ] },
+      { "char": "ㅕ", "name": "여", "strokeCount": 3, "strokes": [
+        { "order": 1, "dir": "R", "desc": "위쪽 짧은 가로획" },
+        { "order": 2, "dir": "R", "desc": "아래쪽 짧은 가로획" },
+        { "order": 3, "dir": "D", "desc": "긴 세로획" } ] },
+      { "char": "ㅗ", "name": "오", "strokeCount": 2, "strokes": [
+        { "order": 1, "dir": "D", "desc": "짧은 세로획" },
+        { "order": 2, "dir": "R", "desc": "긴 가로획" } ] },
+      { "char": "ㅛ", "name": "요", "strokeCount": 3, "strokes": [
+        { "order": 1, "dir": "D", "desc": "왼쪽 짧은 세로획" },
+        { "order": 2, "dir": "D", "desc": "오른쪽 짧은 세로획" },
+        { "order": 3, "dir": "R", "desc": "긴 가로획" } ] },
+      { "char": "ㅜ", "name": "우", "strokeCount": 2, "strokes": [
+        { "order": 1, "dir": "R", "desc": "긴 가로획" },
+        { "order": 2, "dir": "D", "desc": "가운데에서 아래로 짧은 세로획" } ] },
+      { "char": "ㅠ", "name": "유", "strokeCount": 3, "strokes": [
+        { "order": 1, "dir": "R", "desc": "긴 가로획" },
+        { "order": 2, "dir": "D", "desc": "왼쪽 짧은 세로획" },
+        { "order": 3, "dir": "D", "desc": "오른쪽 짧은 세로획" } ] },
+      { "char": "ㅡ", "name": "으", "strokeCount": 1, "strokes": [
+        { "order": 1, "dir": "R", "desc": "긴 가로획" } ] },
+      { "char": "ㅣ", "name": "이", "strokeCount": 1, "strokes": [
+        { "order": 1, "dir": "D", "desc": "긴 세로획" } ] }
+    ],
+    "compound_vowels_rule": {
+      "desc": "복합 모음(ㅐ, ㅔ, ㅘ, ㅢ 등)은 구성 요소를 왼쪽→오른쪽 순서로 쓰며, 각 요소의 획순은 기본 모음과 동일. 예: ㅐ = ㅏ 다음 ㅣ, ㅘ = ㅗ 다음 ㅏ."
+    },
+    "syllable_rule": {
+      "desc": "음절(글자)은 초성 → 중성 → 종성 순서로 쓴다. 예: '한' = ㅎ → ㅏ → ㄴ."
+    }
+  },
+
+  "alphabet": {
+    "style": "유아용 인쇄체(ball-and-stick manuscript) 기준",
+    "uppercase": [
+      { "char": "A", "strokeCount": 3, "strokes": [
+        { "order": 1, "dir": "DL", "desc": "꼭짓점에서 왼쪽 아래로 사선" },
+        { "order": 2, "dir": "DR", "desc": "꼭짓점에서 오른쪽 아래로 사선" },
+        { "order": 3, "dir": "R", "desc": "가운데 가로획" } ] },
+      { "char": "B", "strokeCount": 3, "strokes": [
+        { "order": 1, "dir": "D", "desc": "세로획" },
+        { "order": 2, "dir": "CW", "desc": "위쪽 반원(혹)" },
+        { "order": 3, "dir": "CW", "desc": "아래쪽 반원(혹)" } ],
+        "variants": ["Zaner-Bloser는 2·3번 혹을 한 획으로 이어 2획으로 가르침"] },
+      { "char": "C", "strokeCount": 1, "strokes": [
+        { "order": 1, "dir": "CCW", "desc": "오른쪽 위(2시 방향)에서 시작해 반시계로 열린 곡선" } ] },
+      { "char": "D", "strokeCount": 2, "strokes": [
+        { "order": 1, "dir": "D", "desc": "세로획" },
+        { "order": 2, "dir": "CW", "desc": "위에서 시작해 시계 방향 큰 반원" } ] },
+      { "char": "E", "strokeCount": 4, "strokes": [
+        { "order": 1, "dir": "D", "desc": "세로획" },
+        { "order": 2, "dir": "R", "desc": "위 가로획" },
+        { "order": 3, "dir": "R", "desc": "가운데 가로획" },
+        { "order": 4, "dir": "R", "desc": "아래 가로획" } ] },
+      { "char": "F", "strokeCount": 3, "strokes": [
+        { "order": 1, "dir": "D", "desc": "세로획" },
+        { "order": 2, "dir": "R", "desc": "위 가로획" },
+        { "order": 3, "dir": "R", "desc": "가운데 가로획" } ] },
+      { "char": "G", "strokeCount": 2, "strokes": [
+        { "order": 1, "dir": "CCW", "desc": "C 모양 곡선" },
+        { "order": 2, "dir": "R", "desc": "곡선 끝(가운데 높이)에서 안쪽으로 짧은 가로획" } ] },
+      { "char": "H", "strokeCount": 3, "strokes": [
+        { "order": 1, "dir": "D", "desc": "왼쪽 세로획" },
+        { "order": 2, "dir": "D", "desc": "오른쪽 세로획" },
+        { "order": 3, "dir": "R", "desc": "가운데 가로획" } ] },
+      { "char": "I", "strokeCount": 3, "strokes": [
+        { "order": 1, "dir": "D", "desc": "가운데 세로획" },
+        { "order": 2, "dir": "R", "desc": "위 가로획" },
+        { "order": 3, "dir": "R", "desc": "아래 가로획" } ],
+        "variants": ["산세리프 글꼴처럼 세로획만 쓰면 1획"] },
+      { "char": "J", "strokeCount": 2, "strokes": [
+        { "order": 1, "dir": "CURVE", "desc": "위에서 내려와 왼쪽으로 굽는 갈고리" },
+        { "order": 2, "dir": "R", "desc": "위 가로획" } ],
+        "variants": ["위 가로획 없이 1획으로 쓰는 교본도 많음"] },
+      { "char": "K", "strokeCount": 3, "strokes": [
+        { "order": 1, "dir": "D", "desc": "세로획" },
+        { "order": 2, "dir": "DL", "desc": "오른쪽 위에서 세로획 가운데로 사선" },
+        { "order": 3, "dir": "DR", "desc": "가운데에서 오른쪽 아래로 사선" } ],
+        "variants": ["2·3번을 한 획(꺾어서)으로 이어 2획으로 가르치는 교본도 있음"] },
+      { "char": "L", "strokeCount": 1, "strokes": [
+        { "order": 1, "dir": "D_R", "desc": "내려긋다가 꺾어 오른쪽으로" } ],
+        "variants": ["세로/가로를 나눠 2획으로 가르치는 교본도 있음"] },
+      { "char": "M", "strokeCount": 4, "strokes": [
+        { "order": 1, "dir": "D", "desc": "왼쪽 세로획" },
+        { "order": 2, "dir": "DR", "desc": "왼쪽 꼭대기에서 가운데 아래로 사선" },
+        { "order": 3, "dir": "DL", "desc": "오른쪽 꼭대기에서 가운데 아래로 사선" },
+        { "order": 4, "dir": "D", "desc": "오른쪽 세로획" } ],
+        "variants": ["연속 획(내려-올라-내려-올라)으로 2~3획으로 가르치는 교본도 있음"] },
+      { "char": "N", "strokeCount": 3, "strokes": [
+        { "order": 1, "dir": "D", "desc": "왼쪽 세로획" },
+        { "order": 2, "dir": "DR", "desc": "왼쪽 꼭대기에서 오른쪽 바닥으로 사선" },
+        { "order": 3, "dir": "D", "desc": "오른쪽 세로획" } ] },
+      { "char": "O", "strokeCount": 1, "strokes": [
+        { "order": 1, "dir": "CCW", "desc": "맨 위에서 시작해 반시계 방향 원" } ] },
+      { "char": "P", "strokeCount": 2, "strokes": [
+        { "order": 1, "dir": "D", "desc": "세로획" },
+        { "order": 2, "dir": "CW", "desc": "위쪽 반원(혹)" } ] },
+      { "char": "Q", "strokeCount": 2, "strokes": [
+        { "order": 1, "dir": "CCW", "desc": "O 모양 원" },
+        { "order": 2, "dir": "DR", "desc": "오른쪽 아래로 짧은 꼬리 사선" } ] },
+      { "char": "R", "strokeCount": 3, "strokes": [
+        { "order": 1, "dir": "D", "desc": "세로획" },
+        { "order": 2, "dir": "CW", "desc": "위쪽 반원(혹)" },
+        { "order": 3, "dir": "DR", "desc": "가운데에서 오른쪽 아래로 다리 사선" } ],
+        "variants": ["2·3번을 한 획으로 이어 2획으로 가르치는 교본도 있음"] },
+      { "char": "S", "strokeCount": 1, "strokes": [
+        { "order": 1, "dir": "CURVE", "desc": "오른쪽 위에서 시작해 S 곡선 (왼쪽으로 굽었다가 오른쪽 아래로, 다시 왼쪽으로)" } ] },
+      { "char": "T", "strokeCount": 2, "strokes": [
+        { "order": 1, "dir": "D", "desc": "가운데 세로획" },
+        { "order": 2, "dir": "R", "desc": "위 가로획" } ],
+        "variants": ["가로획을 먼저 쓰는 교본도 있음"] },
+      { "char": "U", "strokeCount": 1, "strokes": [
+        { "order": 1, "dir": "CURVE", "desc": "왼쪽 위에서 내려와 바닥에서 굽어 오른쪽 위로 올라감" } ] },
+      { "char": "V", "strokeCount": 1, "strokes": [
+        { "order": 1, "dir": "CURVE", "desc": "왼쪽 위에서 가운데 아래로 사선, 이어서 오른쪽 위로 사선" } ],
+        "variants": ["두 사선을 모두 위→아래로 나눠 2획으로 가르치는 교본도 있음"] },
+      { "char": "W", "strokeCount": 1, "strokes": [
+        { "order": 1, "dir": "CURVE", "desc": "왼쪽 위에서 지그재그(내려-올라-내려-올라)로 연속해서" } ],
+        "variants": ["사선 4개를 각각 위→아래로 나눠 4획으로 가르치는 교본도 있음"] },
+      { "char": "X", "strokeCount": 2, "strokes": [
+        { "order": 1, "dir": "DR", "desc": "왼쪽 위에서 오른쪽 아래로 사선" },
+        { "order": 2, "dir": "DL", "desc": "오른쪽 위에서 왼쪽 아래로 사선" } ] },
+      { "char": "Y", "strokeCount": 2, "strokes": [
+        { "order": 1, "dir": "CURVE", "desc": "왼쪽 위에서 가운데로 사선, (또는 짧은 사선 2개 후 세로)" },
+        { "order": 2, "dir": "DL", "desc": "오른쪽 위에서 가운데를 지나 아래 세로까지" } ],
+        "variants": ["3획(왼쪽 사선, 오른쪽 사선, 세로)으로 가르치는 교본도 있음 — 유아용으로는 3획이 더 쉬움"] },
+      { "char": "Z", "strokeCount": 1, "strokes": [
+        { "order": 1, "dir": "CURVE", "desc": "위 가로 → 왼쪽 아래 사선 → 아래 가로, 한 획으로" } ] }
+    ],
+    "lowercase": [
+      { "char": "a", "strokeCount": 2, "strokes": [
+        { "order": 1, "dir": "CCW", "desc": "반시계 방향 작은 원" },
+        { "order": 2, "dir": "D", "desc": "원 오른쪽에 붙여 세로획" } ],
+        "variants": ["원에서 이어서 한 획으로 쓰는 교본도 있음"] },
+      { "char": "b", "strokeCount": 2, "strokes": [
+        { "order": 1, "dir": "D", "desc": "긴 세로획" },
+        { "order": 2, "dir": "CW", "desc": "아래쪽 오른쪽에 시계 방향 원" } ] },
+      { "char": "c", "strokeCount": 1, "strokes": [
+        { "order": 1, "dir": "CCW", "desc": "반시계 방향 열린 곡선" } ] },
+      { "char": "d", "strokeCount": 2, "strokes": [
+        { "order": 1, "dir": "CCW", "desc": "반시계 방향 작은 원" },
+        { "order": 2, "dir": "D", "desc": "원 오른쪽에 붙여 긴 세로획" } ] },
+      { "char": "e", "strokeCount": 1, "strokes": [
+        { "order": 1, "dir": "CURVE", "desc": "가운데 가로획에서 시작해 반시계 곡선으로 감싼다" } ] },
+      { "char": "f", "strokeCount": 2, "strokes": [
+        { "order": 1, "dir": "CURVE", "desc": "오른쪽 위 갈고리에서 시작해 아래로 세로획" },
+        { "order": 2, "dir": "R", "desc": "가운데 가로획" } ] },
+      { "char": "g", "strokeCount": 2, "strokes": [
+        { "order": 1, "dir": "CCW", "desc": "반시계 방향 작은 원" },
+        { "order": 2, "dir": "CURVE", "desc": "원 오른쪽에서 아래로 내려가 왼쪽 갈고리 꼬리" } ] },
+      { "char": "h", "strokeCount": 1, "strokes": [
+        { "order": 1, "dir": "CURVE", "desc": "긴 세로획을 내리고, 되짚어 올라와 오른쪽으로 굽어 짧은 세로로 내려온다" } ],
+        "variants": ["세로획과 혹을 나눠 2획으로 가르치는 교본도 있음"] },
+      { "char": "i", "strokeCount": 2, "strokes": [
+        { "order": 1, "dir": "D", "desc": "짧은 세로획" },
+        { "order": 2, "dir": "CURVE", "desc": "위에 점" } ] },
+      { "char": "j", "strokeCount": 2, "strokes": [
+        { "order": 1, "dir": "CURVE", "desc": "아래로 내려가 왼쪽 갈고리" },
+        { "order": 2, "dir": "CURVE", "desc": "위에 점" } ] },
+      { "char": "k", "strokeCount": 3, "strokes": [
+        { "order": 1, "dir": "D", "desc": "긴 세로획" },
+        { "order": 2, "dir": "DL", "desc": "오른쪽에서 세로획 가운데로 사선" },
+        { "order": 3, "dir": "DR", "desc": "가운데에서 오른쪽 아래로 사선" } ],
+        "variants": ["2·3번을 한 획으로 이어 2획으로 가르치는 교본도 있음"] },
+      { "char": "l", "strokeCount": 1, "strokes": [
+        { "order": 1, "dir": "D", "desc": "긴 세로획" } ] },
+      { "char": "m", "strokeCount": 1, "strokes": [
+        { "order": 1, "dir": "CURVE", "desc": "세로획을 내리고, 되짚어 올라와 혹 두 개를 이어서 그린다" } ],
+        "variants": ["세로획 + 혹 2개로 나눠 3획으로 가르치는 교본도 있음"] },
+      { "char": "n", "strokeCount": 1, "strokes": [
+        { "order": 1, "dir": "CURVE", "desc": "세로획을 내리고, 되짚어 올라와 혹 한 개를 그린다" } ],
+        "variants": ["2획으로 나눠 가르치는 교본도 있음"] },
+      { "char": "o", "strokeCount": 1, "strokes": [
+        { "order": 1, "dir": "CCW", "desc": "반시계 방향 작은 원" } ] },
+      { "char": "p", "strokeCount": 2, "strokes": [
+        { "order": 1, "dir": "D", "desc": "기준선 아래까지 긴 세로획" },
+        { "order": 2, "dir": "CW", "desc": "위쪽 오른쪽에 시계 방향 원" } ] },
+      { "char": "q", "strokeCount": 2, "strokes": [
+        { "order": 1, "dir": "CCW", "desc": "반시계 방향 작은 원" },
+        { "order": 2, "dir": "D", "desc": "원 오른쪽에 기준선 아래까지 세로획 (끝을 오른쪽으로 살짝 구부리기도 함)" } ] },
+      { "char": "r", "strokeCount": 1, "strokes": [
+        { "order": 1, "dir": "CURVE", "desc": "세로획을 내리고, 되짚어 올라와 오른쪽으로 짧게 굽는다" } ],
+        "variants": ["2획으로 나눠 가르치는 교본도 있음"] },
+      { "char": "s", "strokeCount": 1, "strokes": [
+        { "order": 1, "dir": "CURVE", "desc": "작은 S 곡선" } ] },
+      { "char": "t", "strokeCount": 2, "strokes": [
+        { "order": 1, "dir": "D", "desc": "긴 세로획 (끝을 오른쪽으로 살짝 구부리기도 함)" },
+        { "order": 2, "dir": "R", "desc": "가로획" } ] },
+      { "char": "u", "strokeCount": 1, "strokes": [
+        { "order": 1, "dir": "CURVE", "desc": "내려가 바닥에서 굽어 올라온 뒤, 오른쪽에서 다시 짧게 내린다" } ],
+        "variants": ["곡선 + 세로획 2획으로 나눠 가르치는 교본도 있음"] },
+      { "char": "v", "strokeCount": 1, "strokes": [
+        { "order": 1, "dir": "CURVE", "desc": "내려갔다 올라오는 사선 (V자, 한 획)" } ] },
+      { "char": "w", "strokeCount": 1, "strokes": [
+        { "order": 1, "dir": "CURVE", "desc": "지그재그 연속 (내려-올라-내려-올라)" } ] },
+      { "char": "x", "strokeCount": 2, "strokes": [
+        { "order": 1, "dir": "DR", "desc": "왼쪽 위에서 오른쪽 아래로 사선" },
+        { "order": 2, "dir": "DL", "desc": "오른쪽 위에서 왼쪽 아래로 사선" } ] },
+      { "char": "y", "strokeCount": 2, "strokes": [
+        { "order": 1, "dir": "DR", "desc": "왼쪽 위에서 가운데로 짧은 사선" },
+        { "order": 2, "dir": "DL", "desc": "오른쪽 위에서 기준선 아래까지 긴 사선" } ] },
+      { "char": "z", "strokeCount": 1, "strokes": [
+        { "order": 1, "dir": "CURVE", "desc": "위 가로 → 왼쪽 아래 사선 → 아래 가로, 한 획으로" } ] }
+    ]
+  },
+
+  "digits": [
+    { "char": "1", "strokeCount": 1, "strokes": [
+      { "order": 1, "dir": "D", "desc": "위에서 아래로 세로획" } ],
+      "variants": ["왼쪽 위로 짧은 깃발(사선)을 붙여도 한 획으로 이어 씀"] },
+    { "char": "2", "strokeCount": 1, "strokes": [
+      { "order": 1, "dir": "CURVE", "desc": "위 곡선(시계 방향)으로 시작해 왼쪽 아래로 사선, 바닥에서 오른쪽으로 가로획" } ] },
+    { "char": "3", "strokeCount": 1, "strokes": [
+      { "order": 1, "dir": "CURVE", "desc": "시계 방향 반원 두 개를 이어서 그린다" } ] },
+    { "char": "4", "strokeCount": 2, "strokes": [
+      { "order": 1, "dir": "D_R", "desc": "내려긋다가 꺾어 오른쪽으로 (ㄴ 모양)" },
+      { "order": 2, "dir": "D", "desc": "오른쪽에 세로획 (가로획을 관통)" } ],
+      "variants": ["열린 4(꼭대기가 뚫린 형태)로 쓰는 서체도 있으나 획순 원리는 동일"] },
+    { "char": "5", "strokeCount": 2, "strokes": [
+      { "order": 1, "dir": "CURVE", "desc": "왼쪽 위에서 아래로 내려긋다가 시계 방향 배 곡선" },
+      { "order": 2, "dir": "R", "desc": "위 가로획" } ],
+      "variants": ["한 획(가로부터 시작)으로 이어 쓰는 교본도 있음"] },
+    { "char": "6", "strokeCount": 1, "strokes": [
+      { "order": 1, "dir": "CURVE", "desc": "오른쪽 위에서 왼쪽 아래로 큰 곡선을 그린 뒤 아래에서 반시계 원으로 감는다" } ] },
+    { "char": "7", "strokeCount": 1, "strokes": [
+      { "order": 1, "dir": "CURVE", "desc": "위 가로획 후 꺾어 왼쪽 아래로 사선" } ],
+      "variants": ["유럽식은 가운데 가로줄을 추가해 2획"] },
+    { "char": "8", "strokeCount": 1, "strokes": [
+      { "order": 1, "dir": "CURVE", "desc": "오른쪽 위에서 시작해 S자로 내려간 뒤 되돌아 올라와 시작점에서 닫는다" } ],
+      "variants": ["원 두 개를 겹쳐 2획으로 가르치기도 하나, 필기 교본은 대부분 한 획을 권장"] },
+    { "char": "9", "strokeCount": 1, "strokes": [
+      { "order": 1, "dir": "CURVE", "desc": "반시계 방향 작은 원을 그린 뒤 오른쪽에서 아래로 내려긋는다" } ] }
+  ]
+}
