@@ -18,6 +18,7 @@
 
 import { VIEW, AREA, CARDS, CARD_W, CARD_H, LEVELS, buildCount, COUNT_SAY, GAE } from './levels.js';
 import { sfx, say } from '../core/audio.js';
+import { STAR } from '../core/icons.js';
 
 const DPR = Math.min(window.devicePixelRatio || 1, 2);
 const DONE_KEY = 'countDone';
@@ -231,7 +232,7 @@ export function initCount({ toast, goHome }) {
       b.dataset.lvl = L.id;
       b.dataset.hard = L.hard;
       b.innerHTML = `<span class="ico">${L.ico}</span><span class="lbl">${L.name}</span>` +
-                    (done.has(L.id) ? '<span class="star">⭐</span>' : '');
+                    (done.has(L.id) ? `<span class="star">${STAR}</span>` : '');
       b.addEventListener('click', () => { sfx.tap(); openLevel(i); });
       strip.appendChild(b);
     });

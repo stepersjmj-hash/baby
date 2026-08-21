@@ -14,12 +14,15 @@ a{color:#3a2f22}a:hover{color:#ff8a3d}
 </style>
 </helmet>
 <div data-screen-label="홈 v2 (1a)" style="position:fixed;inset:0;overflow:hidden;background:radial-gradient(120% 90% at 50% 0%, #ffe3b0 0%, #fdf1d6 60%);color:#3a2f22;font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Pretendard','Malgun Gothic',system-ui,sans-serif;display:flex;flex-direction:column;user-select:none">
-  <header style="display:flex;align-items:center;gap:14px;padding:26px 32px 8px">
-    <div style="display:flex;flex-direction:column;gap:2px">
+  <header style="display:flex;align-items:center;gap:14px;padding:26px 32px 8px;flex-direction:{{ headerDir }}">
+    <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;text-align:{{ titleAlign }}">
       <h1 style="font-size:34px;margin:0;font-weight:800;letter-spacing:-0.8px;white-space:nowrap">무엇을 하고 놀까?</h1>
       <span style="font-size:15px;font-weight:700;opacity:0.5">오늘도 재미있게 놀아 보자!</span>
     </div>
-    <button aria-label="소리 켜기/끄기" style="margin-left:auto;background:#fff;border:0;border-radius:999px;width:56px;height:56px;box-shadow:0 4px 14px rgba(120,84,30,0.16);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+    <button aria-label="설정" onClick="{{ openSettings }}" style="background:#fff;border:0;border-radius:999px;width:56px;height:56px;box-shadow:0 4px 14px rgba(120,84,30,0.16);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+      <svg viewBox="0 0 48 48" width="26" height="26" fill="none" stroke="#3a2f22" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="6.5"></circle><path d="M24 4l2.6 5.4 5.9-1 2.1 5.6 5.9 1-1 5.9L44 24l-4.5 3.1 1 5.9-5.9 1-2.1 5.6-5.9-1L24 44l-2.6-5.4-5.9 1-2.1-5.6-5.9-1 1-5.9L4 24l4.5-3.1-1-5.9 5.9-1 2.1-5.6 5.9 1z"></path></svg>
+    </button>
+    <button aria-label="소리 켜기/끄기" style="background:#fff;border:0;border-radius:999px;width:56px;height:56px;box-shadow:0 4px 14px rgba(120,84,30,0.16);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">
       <svg viewBox="0 0 48 48" width="26" height="26" fill="none" stroke="#3a2f22" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 19v10h7l9 8V11l-9 8H8z"></path><path d="M30 18c3 3 3 9 0 12"></path><path d="M35 14c5 5 5 15 0 20"></path></svg>
     </button>
     <button style="background:#fff;border:0;border-radius:999px;padding:0 22px;height:56px;font-size:18px;font-weight:800;box-shadow:0 4px 14px rgba(120,84,30,0.16);cursor:pointer;font-family:inherit;color:#3a2f22;display:flex;align-items:center;gap:10px;white-space:nowrap;flex-shrink:0">
@@ -53,10 +56,46 @@ a{color:#3a2f22}a:hover{color:#ff8a3d}
   <footer style="padding:0 32px 16px;min-height:26px">
     <span style="font-size:13px;opacity:0.55;font-weight:600">공유 버튼 → "홈 화면에 추가" 하면 전체 화면 앱처럼 쓸 수 있어요</span>
   </footer>
+  <sc-if value="{{ showSettings }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeSettings }}" style="position:fixed;inset:0;background:rgba(58,47,34,0.45);display:flex;align-items:center;justify-content:center;z-index:50">
+      <div onClick="{{ stop }}" style="background:#fffdf7;border-radius:28px;box-shadow:0 24px 60px rgba(58,47,34,0.35);padding:32px 36px 30px;display:flex;flex-direction:column;gap:22px;width:560px;max-width:90vw">
+        <div style="display:flex;align-items:center">
+          <h2 style="margin:0;font-size:26px;font-weight:800;letter-spacing:-0.5px">설정</h2>
+          <button aria-label="닫기" onClick="{{ closeSettings }}" style="margin-left:auto;background:#f6efe2;border:0;border-radius:999px;width:48px;height:48px;cursor:pointer;display:flex;align-items:center;justify-content:center">
+            <svg viewBox="0 0 48 48" width="20" height="20" fill="none" stroke="#3a2f22" stroke-width="4.5" stroke-linecap="round"><path d="M12 12l24 24M36 12L12 36"></path></svg>
+          </button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <span style="font-size:16px;font-weight:800;opacity:0.6">어느 손으로 그려요?</span>
+          <div style="display:flex;gap:14px">
+            <button onClick="{{ pickLeft }}" style="flex:1;background:{{ leftBg }};border:3px solid {{ leftBorder }};border-radius:22px;padding:20px 12px 16px;cursor:pointer;font-family:inherit;color:#3a2f22;display:flex;flex-direction:column;align-items:center;gap:8px">
+              <svg viewBox="0 0 48 48" width="52" height="52" fill="none" stroke="#3a2f22" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="transform:scaleX(-1)"><path d="M17 22V10a3 3 0 0 1 6 0v10m0-8a3 3 0 0 1 6 0v10m0-7a3 3 0 0 1 6 0v11c0 9-5 15-13 15-6 0-9-3-12-9l-4-8c-1-2 0-4 2-5s4 0 5 2l4 6"></path></svg>
+              <span style="font-size:20px;font-weight:800">왼손</span>
+              <span style="font-size:13px;font-weight:700;opacity:0.55">버튼이 오른쪽으로 가요</span>
+            </button>
+            <button onClick="{{ pickRight }}" style="flex:1;background:{{ rightBg }};border:3px solid {{ rightBorder }};border-radius:22px;padding:20px 12px 16px;cursor:pointer;font-family:inherit;color:#3a2f22;display:flex;flex-direction:column;align-items:center;gap:8px">
+              <svg viewBox="0 0 48 48" width="52" height="52" fill="none" stroke="#3a2f22" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M17 22V10a3 3 0 0 1 6 0v10m0-8a3 3 0 0 1 6 0v10m0-7a3 3 0 0 1 6 0v11c0 9-5 15-13 15-6 0-9-3-12-9l-4-8c-1-2 0-4 2-5s4 0 5 2l4 6"></path></svg>
+              <span style="font-size:20px;font-weight:800">오른손</span>
+              <span style="font-size:13px;font-weight:700;opacity:0.55">버튼이 왼쪽으로 가요</span>
+            </button>
+          </div>
+          <span style="font-size:13px;font-weight:700;opacity:0.45">쥐는 손 반대쪽에 버튼을 모아, 손바닥이 닿아도 눌리지 않아요.</span>
+        </div>
+      </div>
+    </div>
+  </sc-if>
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;showLocked&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;콘텐츠&quot;}}">
 class Component extends DCLogic {
+  state = { hand: 'right', showSettings: false };
+  componentDidMount() {
+    try { const h = localStorage.getItem('haichu.hand'); if (h === 'left' || h === 'right') this.setState({ hand: h }); } catch (e) {}
+  }
+  setHand(hand) {
+    this.setState({ hand });
+    try { localStorage.setItem('haichu.hand', hand); } catch (e) {}
+  }
   icon(inner, color) {
     return 'data:image/svg+xml,' + encodeURIComponent(
       `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`);
@@ -89,7 +128,22 @@ class Component extends DCLogic {
     ];
     if (showLocked) groups.push({ title: '곧 나와요', dot: '#c9b88f', tint: '#f6efe2', items: [
       { icon: I('<rect x="8" y="8" width="13" height="13" rx="3"/><circle cx="35" cy="14" r="7"/><path d="M17 40l7-11 7 11z"/>', N), name: '모양 분류', desc: '끌어다 담기', op: 0.5, locked: true } ] });
-    return { groups };
+    const left = this.state.hand === 'left';
+    return { groups,
+      showSettings: this.state.showSettings,
+      isLeft: left, isRight: !left,
+      headerDir: left ? 'row' : 'row-reverse',
+      titleAlign: left ? 'left' : 'right',
+      openSettings: () => this.setState({ showSettings: true }),
+      closeSettings: () => this.setState({ showSettings: false }),
+      pickLeft: () => this.setHand('left'),
+      pickRight: () => this.setHand('right'),
+      stop: (e) => e.stopPropagation(),
+      leftBg: left ? '#fff3df' : '#f6efe2',
+      leftBorder: left ? '#ff8a3d' : 'transparent',
+      rightBg: !left ? '#fff3df' : '#f6efe2',
+      rightBorder: !left ? '#ff8a3d' : 'transparent'
+    };
   }
 }
 </script>

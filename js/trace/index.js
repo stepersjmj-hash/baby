@@ -17,6 +17,7 @@
    ============================================================ */
 
 import { attachPen } from '../core/pen.js';
+import { STAR } from '../core/icons.js';
 import { VIEW, buildLevel, createTracer } from '../core/trace.js';
 import { sfx, voice, say } from '../core/audio.js';
 import { LINES } from './lines.js';
@@ -42,7 +43,7 @@ const COURSES = {
      full 이면 열 때 이름을 미리 읽지 않고(intro 만) 완성 후 📣 로 듣는다 */
   names:  { levels: NAMES,   guide: true,  tol: 28, key: 'namesDone',  voice: 'write',
             from: '✏️', to: '⭐', lang: 'ko-KR', full: true, intro: '이름을 써 보자',
-            road: 34, fill: 24, icon: 44, badge: 12 }
+            road: 34, fill: 24, icon: 44, badge: 12, photos: true }
 };
 
 const DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -450,6 +451,40 @@ export function initPractice({ toast, goHome }) {
     sfx.undo();
   }
 
+/* ── 이름 사진 ──────────────────────────────────────────────
+   이름 칩에 그 사람 얼굴을 보여 준다. 사진은 저장소에 두지 않고
+   **집 NAS 에서 받아 온다** — 이 저장소는 public 이라 가족 사진을
+   커밋할 수 없기 때문이다. 주소에 이름을 그대로 붙이면 된다.
+
+   사진을 추가하려면 코드가 아니라 그 폴더에 파일을 올리면 된다.
+   없는 이름은 조용히 원래 아이콘(가족 하트)으로 남는다 — NAS 가
+   꺼져 있거나 비행기 모드여도 화면은 멀쩡하다.
+
+   · <img> 로 보여 주기만 하므로 CORS 설정이 필요 없다.
+   · 서비스 워커는 다른 origin 요청에 끼어들지 않으므로(sw.js) 오프라인
+     에서는 안 보인다. 그때도 하트로 남을 뿐이라 괜찮다.
+   · https 라 GitHub Pages(https)에서도 혼합 콘텐츠로 막히지 않는다. */
+const FACE_BASE = 'https://stepersjmj.synology.me:28443/mjimage/upload/face/';
+const FACE_EXT = ['jpg', 'png'];
+const faceURL = (name, k) => FACE_BASE + encodeURIComponent(name) + '.' + FACE_EXT[k];
+
+/** 사진이 있으면 칩의 아이콘을 그 사진으로 갈아 끼운다 (없으면 아무 일 없음) */
+function tryFace(chip, name) {
+  let k = 0;
+  const im = new Image();
+  im.className = 'thumb face';
+  im.alt = '';
+  im.onload = () => {
+    chip.querySelector('.ico')?.replaceWith(im);
+    // 얼굴이 붙으면 이름 글자는 뺀다. 글자를 못 읽는 나이라 얼굴이
+    // 훨씬 잘 통하고, 뺀 자리만큼 사진을 크게 쓸 수 있다.
+    chip.querySelector('.lbl')?.remove();
+    chip.classList.add('has-face');
+  };
+  im.onerror = () => { if (++k < FACE_EXT.length) im.src = faceURL(name, k); };
+  im.src = faceURL(name, 0);
+}
+
   function buildStrip() {
     const strip = $('trace-strip');
     strip.innerHTML = '';
@@ -459,8 +494,21 @@ export function initPractice({ toast, goHome }) {
       b.className = 'lvl' + (L.id === level?.id ? ' is-on' : '');
       b.dataset.lvl = L.id;
       b.innerHTML = `<span class="ico">${L.ico}</span><span class="lbl">${L.name}</span>` +
-                    (done.has(L.id) ? '<span class="star">⭐</span>' : '');
-      b.addEventListener('click', () => { sfx.tap(); openLevel(i); });
+                    (done.has(L.id) ? `<span class="star">${STAR}</span>` : '');
+      b.addEventListener('click', () => {
+        sfx.tap();
+        /* 사진 칩은 누른 그 자리에서 이름을 읽어 준다 — 얼굴과 이름을
+           잇는 게 이 활동의 핵심이라, 다 쓴 뒤가 아니라 고를 때 들려준다.
+           click 핸들러의 동기 흐름이라 iOS 소리 권한도 확실하다.
+           읽었으면 안내말("이름을 써 보자")은 건너뛴다 — 뒤이어 나오면
+           방금 읽은 이름을 잘라 먹는다 (클립은 새로 틀 때 앞엣것을 끊는다). */
+        if (course.photos && course.lang) {
+          say(L.say ?? L.name, course.lang);
+          introSaid.add(courseId);
+        }
+        openLevel(i);
+      });
+      if (course.photos) tryFace(b, L.name);
       strip.appendChild(b);
     });
   }

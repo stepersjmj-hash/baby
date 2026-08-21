@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<style>
+body{margin:0;background:#efe9de}
+a{color:#3a2f22}a:hover{color:#ff8a3d}
+</style>
+</helmet>
+<section style="display:flex;gap:48px;padding:40px;align-items:flex-start;flex-wrap:wrap;font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Pretendard','Malgun Gothic',system-ui,sans-serif;color:#3a2f22">
+
+  <!-- ══════════ 색칠하기 (창작·주황) ══════════ -->
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;align-items:center;gap:10px"><span style="width:10px;height:10px;border-radius:50%;background:#ff8a3d"></span><span style="font-weight:800;font-size:15px;opacity:0.6">색칠하기 — 창작</span></div>
+    <div data-screen-label="색칠하기 v2" style="width:1180px;height:820px;overflow:hidden;background:#fdf1d6;border-radius:24px;box-shadow:0 20px 50px rgba(90,64,30,0.18);display:flex;flex-direction:column;user-select:none">
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:#fff;border-bottom:1px solid #e9dcc4;box-shadow:0 2px 10px rgba(120,84,30,0.10);z-index:5">
+        <div style="display:flex;gap:6px;align-items:center">
+          <sc-for list="{{ tools }}" as="t" hint-placeholder-count="10">
+            <div style="width:58px;height:68px;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:{{ t.bg }};border:2px solid {{ t.border }}">
+              <i style="width:30px;height:30px;background-image:url('{{ t.icon }}');background-size:contain;background-repeat:no-repeat;background-position:center"></i>
+              <span style="font-size:10px;font-weight:800;opacity:0.55">{{ t.label }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
+          <div style="display:flex;gap:6px;align-items:center">
+            <sc-for list="{{ sizes }}" as="s" hint-placeholder-count="3">
+              <div style="width:52px;height:52px;border-radius:16px;background:{{ s.bg }};border:2px solid {{ s.border }};display:flex;align-items:center;justify-content:center"><i style="width:{{ s.d }}px;height:{{ s.d }}px;border-radius:50%;background:#6b5c47;display:block"></i></div>
+            </sc-for>
+          </div>
+          <div style="width:68px;height:68px;border-radius:50%;background:#f6efe2;box-shadow:inset 0 0 0 2px #e5d8bf;display:flex;align-items:center;justify-content:center">
+            <i style="width:46px;height:46px;border-radius:50%;background:#ff7a3d;box-shadow:0 0 0 3px #fff,0 2px 6px rgba(0,0,0,0.2);display:block"></i>
+          </div>
+        </div>
+      </div>
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:14px;min-height:0">
+        <div style="position:relative;width:866px;height:606px;background:#fffdf7;border-radius:14px;box-shadow:0 10px 30px rgba(120,84,30,0.22);overflow:hidden">
+          <div style="position:absolute;top:0;left:0;right:0;height:16px;background:repeating-linear-gradient(90deg,transparent 0 26px,rgba(150,120,80,0.20) 26px 44px);border-radius:14px 14px 0 0"></div>
+          <svg viewBox="0 0 940 658" style="position:absolute;inset:0;width:100%;height:100%">
+            <circle cx="780" cy="120" r="58" fill="#ffe9a8" stroke="#b9ab8d" stroke-width="5"></circle>
+            <g stroke="#b9ab8d" stroke-width="5" stroke-linecap="round"><path d="M780 34v20M780 186v20M694 120h-20M886 120h-20M719 59l-14-14M855 195l-14-14M855 45l-14 14M719 181l-14 14"></path></g>
+            <path d="M250 380 L470 220 L690 380 Z" fill="#ffd9b8" stroke="#8b7b5e" stroke-width="6" stroke-linejoin="round"></path>
+            <rect x="290" y="380" width="360" height="200" fill="none" stroke="#8b7b5e" stroke-width="6" rx="4"></rect>
+            <rect x="420" y="450" width="100" height="130" fill="none" stroke="#8b7b5e" stroke-width="6" rx="6"></rect>
+            <path d="M60 600 Q 470 560 880 600" fill="none" stroke="#8b7b5e" stroke-width="6" stroke-linecap="round"></path>
+            <path d="M120 540 c30-60 90-60 120 0" fill="none" stroke="#8b7b5e" stroke-width="6" stroke-linecap="round"></path>
+          </svg>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:#fff;border-top:1px solid #e9dcc4;box-shadow:0 -2px 10px rgba(120,84,30,0.10)">
+        <sc-for list="{{ colorBtns }}" as="b" hint-placeholder-count="3">
+          <div style="width:68px;height:68px;border-radius:20px;background:#f6efe2;display:flex;align-items:center;justify-content:center;opacity:{{ b.op }}"><i style="width:32px;height:32px;background-image:url('{{ b.icon }}');background-size:contain;background-repeat:no-repeat;background-position:center"></i></div>
+        </sc-for>
+        <div style="width:2px;height:44px;border-radius:2px;background:#e9dcc4;margin:0 8px"></div>
+        <div style="position:relative;width:68px;height:68px;border-radius:20px;background:#f6efe2;display:flex;align-items:center;justify-content:center;overflow:hidden"><i style="position:absolute;left:0;bottom:0;width:100%;height:34%;background:#ffb47a"></i><i style="position:relative;width:32px;height:32px;background-image:url('{{ ic.broom }}');background-size:contain;background-repeat:no-repeat;background-position:center"></i></div>
+        <div style="width:68px;height:68px;border-radius:20px;background:#f6efe2;display:flex;align-items:center;justify-content:center"><i style="width:32px;height:32px;background-image:url('{{ ic.save }}');background-size:contain;background-repeat:no-repeat;background-position:center"></i></div>
+        <div style="height:68px;border-radius:20px;background:#f6efe2;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 22px;font-size:18px;font-weight:800"><i style="width:28px;height:28px;background-image:url('{{ ic.pic }}');background-size:contain;background-repeat:no-repeat;background-position:center"></i>다른 그림</div>
+        <div style="flex:1"></div>
+        <span style="font-size:12px;font-weight:700;opacity:0.35;padding-right:8px">오른손 쉼터</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ 따라 그리기 — 한글 (쓰기 준비·초록) ══════════ -->
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;align-items:center;gap:10px"><span style="width:10px;height:10px;border-radius:50%;background:#7fd18a"></span><span style="font-weight:800;font-size:15px;opacity:0.6">따라 그리기 러너 (한글·숫자·영어·선긋기 공용) — 쓰기 준비</span></div>
+    <div data-screen-label="따라 그리기 v2" style="width:1180px;height:820px;overflow:hidden;background:#fdf1d6;border-radius:24px;box-shadow:0 20px 50px rgba(90,64,30,0.18);display:flex;flex-direction:column;user-select:none">
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:#fff;border-bottom:1px solid #e9dcc4;box-shadow:0 2px 10px rgba(120,84,30,0.10);z-index:5">
+        <div style="display:flex;gap:6px">
+          <sc-for list="{{ traceLevels }}" as="l" hint-placeholder-count="8">
+            <div style="position:relative;width:64px;height:68px;border-radius:16px;background:{{ l.bg }};border:2px solid {{ l.border }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">
+              <span style="font-size:26px;line-height:1;font-weight:800;color:#4a3c28">{{ l.glyph }}</span>
+              <span style="font-size:10px;font-weight:800;opacity:0.55">{{ l.name }}</span>
+              <i style="position:absolute;left:14px;right:14px;bottom:5px;height:3px;border-radius:3px;background:{{ l.hard }}"></i>
+              <sc-if value="{{ l.done }}" hint-placeholder-val="{{ false }}">
+                <i style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;background-image:url('{{ ic.star }}');background-size:contain;background-repeat:no-repeat"></i>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:14px;min-height:0">
+        <div style="position:relative;width:866px;height:606px;background:#fffdf7;border-radius:14px;box-shadow:0 10px 30px rgba(120,84,30,0.22);overflow:hidden">
+          <div style="position:absolute;top:0;left:0;right:0;height:16px;background:repeating-linear-gradient(90deg,transparent 0 26px,rgba(150,120,80,0.20) 26px 44px);border-radius:14px 14px 0 0"></div>
+          <svg viewBox="0 0 940 658" style="position:absolute;inset:0;width:100%;height:100%">
+            <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M300 190 H640 V520" stroke="#f0e7d3" stroke-width="58"></path>
+              <path d="M300 190 H640 V520" stroke="#cbb896" stroke-width="4" stroke-dasharray="7 17"></path>
+              <path d="M300 190 H520" stroke="#ff6f3d" stroke-width="42"></path>
+              <path d="M300 190 H420" stroke="#ffb02e" stroke-width="42"></path>
+              <path d="M300 190 H360" stroke="#ffe14d" stroke-width="42"></path>
+            </g>
+            <circle cx="300" cy="190" r="24" fill="#ff8a3d"></circle>
+            <text x="300" y="199" font-size="26" font-weight="800" text-anchor="middle" fill="#fff" font-family="sans-serif">1</text>
+            <circle cx="540" cy="190" r="34" fill="none" stroke="#3fb950" stroke-width="5"></circle>
+            <g transform="translate(540,190)"><path d="M-12 14L14 -12l6 6L-6 20l-8 2z" fill="#f2b23c" stroke="#8b6a2a" stroke-width="3" stroke-linejoin="round"></path></g>
+            <path d="M640 520 l7 14 16 2-11 11 3 16-15-8-15 8 3-16-11-11 16-2z" fill="#ffd166" stroke="#e0a93e" stroke-width="3" stroke-linejoin="round"></path>
+          </svg>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:#fff;border-top:1px solid #e9dcc4;box-shadow:0 -2px 10px rgba(120,84,30,0.10)">
+        <div style="width:68px;height:68px;border-radius:20px;background:#f6efe2;display:flex;align-items:center;justify-content:center"><i style="width:32px;height:32px;background-image:url('{{ ic.home }}');background-size:contain;background-repeat:no-repeat;background-position:center"></i></div>
+        <div style="width:68px;height:68px;border-radius:20px;background:#f6efe2;display:flex;align-items:center;justify-content:center"><i style="width:32px;height:32px;background-image:url('{{ ic.undo }}');background-size:contain;background-repeat:no-repeat;background-position:center"></i></div>
+        <div style="width:68px;height:68px;border-radius:20px;background:#f6efe2;display:flex;align-items:center;justify-content:center"><i style="width:32px;height:32px;background-image:url('{{ ic.say }}');background-size:contain;background-repeat:no-repeat;background-position:center"></i></div>
+        <div style="width:2px;height:44px;border-radius:2px;background:#e9dcc4;margin:0 8px"></div>
+        <div style="width:68px;height:68px;border-radius:20px;background:#f6efe2;display:flex;align-items:center;justify-content:center;opacity:0.3"><i style="width:26px;height:26px;background-image:url('{{ ic.prev }}');background-size:contain;background-repeat:no-repeat;background-position:center"></i></div>
+        <span style="font-size:19px;font-weight:800;min-width:104px;text-align:center;letter-spacing:-0.5px">가</span>
+        <div style="width:68px;height:68px;border-radius:20px;background:#f6efe2;display:flex;align-items:center;justify-content:center"><i style="width:26px;height:26px;background-image:url('{{ ic.next }}');background-size:contain;background-repeat:no-repeat;background-position:center"></i></div>
+        <div style="flex:1"></div>
+        <span style="font-size:12px;font-weight:700;opacity:0.35;padding-right:8px">오른손 쉼터</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ 조각 퍼즐 (생각 놀이·파랑) ══════════ -->
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;align-items:center;gap:10px"><span style="width:10px;height:10px;border-radius:50%;background:#7ab8f2"></span><span style="font-weight:800;font-size:15px;opacity:0.6">조각 퍼즐 (미로·점잇기·세어보기·찾기 공용 레이아웃) — 생각 놀이</span></div>
+    <div data-screen-label="조각 퍼즐 v2" style="width:1180px;height:820px;overflow:hidden;background:#fdf1d6;border-radius:24px;box-shadow:0 20px 50px rgba(90,64,30,0.18);display:flex;flex-direction:column;user-select:none">
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:#fff;border-bottom:1px solid #e9dcc4;box-shadow:0 2px 10px rgba(120,84,30,0.10);z-index:5">
+        <div style="display:flex;gap:6px">
+          <sc-for list="{{ puzzleLevels }}" as="l" hint-placeholder-count="6">
+            <div style="position:relative;width:64px;height:68px;border-radius:16px;background:{{ l.bg }};border:2px solid {{ l.border }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
+              <i style="width:38px;height:28px;border-radius:8px;background:{{ l.thumb }};display:block"></i>
+              <span style="font-size:10px;font-weight:800;opacity:0.55">{{ l.name }}</span>
+              <sc-if value="{{ l.done }}" hint-placeholder-val="{{ false }}">
+                <i style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;background-image:url('{{ ic.star }}');background-size:contain;background-repeat:no-repeat"></i>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:14px;min-height:0">
+        <div style="position:relative;width:866px;height:606px;background:#fffdf7;border-radius:14px;box-shadow:0 10px 30px rgba(120,84,30,0.22);overflow:hidden">
+          <div style="position:absolute;top:0;left:0;right:0;height:16px;background:repeating-linear-gradient(90deg,transparent 0 26px,rgba(150,120,80,0.20) 26px 44px);border-radius:14px 14px 0 0"></div>
+          <div style="position:absolute;left:110px;top:74px;width:646px;height:388px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:8px">
+            <div style="border-radius:12px;background:linear-gradient(135deg,#bfe4ff,#8fc7f2)"></div>
+            <div style="border-radius:12px;background:linear-gradient(135deg,#ffe0b8,#f7c286)"></div>
+            <div style="border-radius:12px;border:3px dashed #cbb896;background:#f6efe2"></div>
+            <div style="border-radius:12px;background:linear-gradient(135deg,#cdeccb,#9fd6a3)"></div>
+            <div style="border-radius:12px;border:3px dashed #cbb896;background:#f6efe2"></div>
+            <div style="border-radius:12px;background:linear-gradient(135deg,#f3d9f5,#ddb2e2)"></div>
+          </div>
+          <div style="position:absolute;left:276px;bottom:36px;width:208px;height:186px;border-radius:12px;background:linear-gradient(135deg,#ffd6d6,#f2a6a6);box-shadow:0 10px 24px rgba(90,64,30,0.25);transform:rotate(-7deg)"></div>
+          <div style="position:absolute;right:194px;bottom:48px;width:208px;height:186px;border-radius:12px;background:linear-gradient(135deg,#fdeeb5,#ecd07f);box-shadow:0 10px 24px rgba(90,64,30,0.25);transform:rotate(5deg)"></div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:#fff;border-top:1px solid #e9dcc4;box-shadow:0 -2px 10px rgba(120,84,30,0.10)">
+        <div style="width:68px;height:68px;border-radius:20px;background:#f6efe2;display:flex;align-items:center;justify-content:center"><i style="width:32px;height:32px;background-image:url('{{ ic.home }}');background-size:contain;background-repeat:no-repeat;background-position:center"></i></div>
+        <div style="width:68px;height:68px;border-radius:20px;background:#f6efe2;display:flex;align-items:center;justify-content:center"><i style="width:32px;height:32px;background-image:url('{{ ic.undo }}');background-size:contain;background-repeat:no-repeat;background-position:center"></i></div>
+        <div style="width:2px;height:44px;border-radius:2px;background:#e9dcc4;margin:0 8px"></div>
+        <div style="width:68px;height:68px;border-radius:20px;background:#f6efe2;display:flex;align-items:center;justify-content:center"><i style="width:26px;height:26px;background-image:url('{{ ic.prev }}');background-size:contain;background-repeat:no-repeat;background-position:center"></i></div>
+        <span style="font-size:19px;font-weight:800;min-width:104px;text-align:center;letter-spacing:-0.5px">아기 곰</span>
+        <div style="width:68px;height:68px;border-radius:20px;background:#f6efe2;display:flex;align-items:center;justify-content:center"><i style="width:26px;height:26px;background-image:url('{{ ic.next }}');background-size:contain;background-repeat:no-repeat;background-position:center"></i></div>
+        <div style="flex:1"></div>
+        <span style="font-size:12px;font-weight:700;opacity:0.35;padding-right:8px">오른손 쉼터</span>
+      </div>
+    </div>
+  </div>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  icon(inner, color, sw) {
+    return 'data:image/svg+xml,' + encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" stroke="${color}" stroke-width="${sw || 3.5}" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`);
+  }
+  renderVals() {
+    const INK = '#5a4b34';
+    const I = (inner, c, sw) => this.icon(inner, c || INK, sw);
+    const ic = {
+      home: I('<path d="M8 22L24 8l16 14v16a3 3 0 0 1-3 3H11a3 3 0 0 1-3-3z"/><path d="M19 41V29h10v12"/>'),
+      undo: I('<path d="M14 19h16a9 9 0 1 1 0 18h-7"/><path d="M20 11l-8 8 8 8"/>'),
+      redo: I('<path d="M34 19H18a9 9 0 1 0 0 18h7"/><path d="M28 11l8 8-8 8"/>'),
+      broom: I('<path d="M33 6L23 24"/><path d="M23 24c-7-2-13 3-14 10l17 6c4-4 4-11-3-16z"/><path d="M17 32l-2 6m8-4l-2 6"/>'),
+      save: I('<rect x="8" y="8" width="32" height="32" rx="6"/><path d="M24 16v14m-6-5l6 6 6-6"/>'),
+      pic: I('<rect x="6" y="9" width="36" height="30" rx="6"/><circle cx="17" cy="19" r="3.5"/><path d="M10 35l9-9 8 8 6-7 9 10"/>'),
+      say: I('<path d="M38 8v26l-20-6h-6a4 4 0 0 1-4-4v-6a4 4 0 0 1 4-4h6z"/><path d="M18 30l4 11"/>'),
+      prev: I('<path d="M30 10L16 24l14 14"/>', INK, 4.5),
+      next: I('<path d="M18 10l14 14-14 14"/>', INK, 4.5),
+      star: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path d="M24 4l6.2 12.5L44 18.5l-10 9.7 2.4 13.7L24 35.4 11.6 41.9 14 28.2 4 18.5l13.8-2z" fill="#ffd166" stroke="#e0a93e" stroke-width="2.5" stroke-linejoin="round"/></svg>')
+    };
+    const O = '#e8762a';
+    const R = (inner) => 'data:image/svg+xml,' + encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">${inner}</svg>`);
+    const toolDefs = [
+      ['크레용', R('<path d="M19 17h10v21a5 5 0 0 1-10 0z" fill="#ff5a5a"/><path d="M19 17l5-9 5 9z" fill="#e03131"/><rect x="19" y="26" width="10" height="6" fill="#ffd3d3"/>'), 1],
+      ['색연필', R('<path d="M30 8l10 10-18 18-14 4 4-14z" fill="#ffc94d"/><path d="M12 26l10 10-14 4z" fill="#f2d9b0"/><path d="M9 39l3-1-2-2z" fill="#5a4b34"/><path d="M30 8l10 10 3-3c2-2 2-5 0-7s-5-2-7 0z" fill="#ff8fc4"/>'), 0],
+      ['붓', R('<path d="M36 7c3 2 4 6 1 9L24 29l-7-7L30 9c2-2 4-3 6-2z" fill="#4a90ff"/><path d="M17 22c-4 1-6 4-7 8-1 3-1 4-4 6 5 2 10 1 13-2 3-3 3-8-2-12z" fill="#f7a45c"/>'), 0],
+      ['마커', R('<rect x="18" y="14" width="12" height="22" rx="3" fill="#6b6b6b"/><path d="M20 14l2-8h4l2 8z" fill="#3f3f3f"/><path d="M20 36l4 6 4-6z" fill="#3f3f3f"/><rect x="18" y="22" width="12" height="6" fill="#9a9a9a"/>'), 0],
+      ['무지개', R('<g fill="none" stroke-linecap="round"><path d="M9 37a15 15 0 0 1 30 0" stroke="#ff5a5a" stroke-width="5"/><path d="M15 37a9 9 0 0 1 18 0" stroke="#ffc94d" stroke-width="5"/><path d="M21 37a3 3 0 0 1 6 0" stroke="#4fd06b" stroke-width="5"/></g>'), 0],
+      ['반짝이', R('<path d="M21 6l3.5 9.5L34 19l-9.5 3.5L21 32l-3.5-9.5L8 19l9.5-3.5z" fill="#ffd166"/><path d="M36 26l2 5.5 5.5 1.5L38 35l-2 5.5L34 35l-5.5-2 5.5-1.5z" fill="#ffe6a3"/>'), 0],
+      ['꽃', R('<g fill="#ff8fc4"><circle cx="24" cy="12" r="7"/><circle cx="35.5" cy="20.5" r="7"/><circle cx="31" cy="34" r="7"/><circle cx="17" cy="34" r="7"/><circle cx="12.5" cy="20.5" r="7"/></g><circle cx="24" cy="24" r="6" fill="#ffd166"/>'), 0],
+      ['물감통', R('<path d="M10 16h28l-3 24a4 4 0 0 1-4 4H17a4 4 0 0 1-4-4z" fill="#46cfe0"/><ellipse cx="24" cy="16" rx="14" ry="5" fill="#2fb3c4"/><path d="M13 12a11 9 0 0 1 22 0" stroke="#2fb3c4" stroke-width="4" fill="none" stroke-linecap="round"/>'), 0],
+      ['스티커', R('<path d="M24 6l5.5 11.2L42 19l-9 8.8 2 12.2L24 34.2 13 40l2-12.2L6 19l12.5-1.8z" fill="#ffd166" stroke="#f0b429" stroke-width="2" stroke-linejoin="round"/>'), 0],
+      ['지우개', R('<rect x="8" y="17" width="32" height="17" rx="8.5" fill="#e8e14d"/><g fill="#cfc93a"><circle cx="16" cy="24" r="2"/><circle cx="26" cy="29" r="2"/><circle cx="33" cy="23" r="2"/><circle cx="21" cy="21" r="1.5"/></g>'), 0]
+    ];
+    const tools = toolDefs.map(([label, icon, on]) => ({
+      label, icon,
+      bg: on ? '#fff3df' : '#f6efe2',
+      border: on ? '#ff8a3d' : 'transparent',
+      lift: 'none',
+      glow: 'none'
+    }));
+    const sizes = [12, 22, 34].map((d, i) => ({
+      d, bg: i === 1 ? '#fff3df' : '#f6efe2', border: i === 1 ? '#ff8a3d' : 'transparent'
+    }));
+    const colorBtns = [
+      { icon: ic.home, op: 1 }, { icon: ic.undo, op: 1 }, { icon: ic.redo, op: 0.3 }
+    ];
+    const G = '#4da55c';
+    const hardColors = ['#7fd18a', '#7fd18a', '#ffc94d', '#ffc94d', '#ff8a6b'];
+    const traceLevels = ['가', '나', '다', '라', '마'].map((glyph, i) => ({
+      glyph, name: glyph, done: i < 2,
+      hard: hardColors[i],
+      bg: i === 0 ? '#e9f7ea' : '#f6efe2',
+      border: i === 0 ? G : 'transparent'
+    }));
+    const B = '#4d84c4';
+    const thumbs = ['linear-gradient(135deg,#bfe4ff,#8fc7f2)', 'linear-gradient(135deg,#cdeccb,#9fd6a3)', 'linear-gradient(135deg,#ffe0b8,#f7c286)', 'linear-gradient(135deg,#f3d9f5,#ddb2e2)', 'linear-gradient(135deg,#ffd6d6,#f2a6a6)'];
+    const names = ['아기 곰', '바닷속', '공룡', '꽃밭', '자동차'];
+    const puzzleLevels = names.map((name, i) => ({
+      name, thumb: thumbs[i], done: i < 1,
+      bg: i === 0 ? '#e8f1fc' : '#f6efe2',
+      border: i === 0 ? B : 'transparent'
+    }));
+    return { ic, tools, sizes, colorBtns, traceLevels, puzzleLevels };
+  }
+}
+</script>
+</body>
+</html>

@@ -25,6 +25,7 @@ import { floodFill, alphaMask, hexToRgba } from './fill.js';
 import { sfx, voice } from '../core/audio.js';
 import { works, drafts, linework } from '../core/store.js';
 import { photoToLineArt } from './photopage.js';
+import { toolIcon } from '../core/icons.js';
 
 const DPR = Math.min(window.devicePixelRatio || 1, 2);
 const MAX_RECS = 24;
@@ -439,7 +440,7 @@ export function initColoring({ toast, goHome }) {
       b.type = 'button';
       b.className = 'tool' + (id === tool ? ' is-on' : '');
       b.dataset.tool = id;
-      b.innerHTML = `<span class="ico">${meta.ico}</span><span class="lbl">${meta.label}</span>`;
+      b.innerHTML = `<span class="ico">${toolIcon(meta.id)}</span><span class="lbl">${meta.label}</span>`;
       b.addEventListener('click', () => selectTool(id));
       strip.appendChild(b);
     }

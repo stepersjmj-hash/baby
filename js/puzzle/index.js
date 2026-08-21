@@ -25,6 +25,7 @@
    ============================================================ */
 
 import { attachPen } from '../core/pen.js';
+import { STAR } from '../core/icons.js';
 import { VIEW, PIC, SNAP, buildPuzzle, tracePiece } from './cut.js';
 import { PICS, drawScene } from './pics.js';
 import { sfx, voice } from '../core/audio.js';
@@ -394,11 +395,22 @@ export function initPuzzle({ toast, goHome }) {
       b.className = 'lvl' + (L.id === level?.id ? ' is-on' : '');
       b.dataset.lvl = L.id;
       b.dataset.hard = L.hard;
-      const face = L.photo
-        ? `<img class="thumb" src="${album.get(L.photo)?.url ?? ''}" alt="">`
-        : `<span class="ico">${L.ico}</span>`;
-      b.innerHTML = `${face}<span class="lbl">${L.name}</span>` +
-                    (done.has(L.id) ? '<span class="star">⭐</span>' : '');
+      b.innerHTML = `<span class="lbl">${L.name}</span>` +
+                    (done.has(L.id) ? `<span class="star">${STAR}</span>` : '');
+      /* 칩에는 그 문제의 그림을 그대로 줄여 보여 준다. 이모지 한 글자보다
+         "무엇을 맞추는지" 가 훨씬 잘 보인다 (사진 퍼즐은 원래 그랬다).
+         2배로 그려 넣어야 레티나에서 안 뭉갠다. */
+      if (L.photo) {
+        const im = document.createElement('img');
+        im.className = 'thumb'; im.alt = '';
+        im.src = album.get(L.photo)?.url ?? '';
+        b.prepend(im);
+      } else {
+        const cv = document.createElement('canvas');
+        cv.className = 'thumb'; cv.width = 76; cv.height = 56;
+        drawScene(L, cv.getContext('2d'), 76, 56);
+        b.prepend(cv);
+      }
       b.addEventListener('click', () => { sfx.tap(); openLevel(i); });
       if (L.photo) {                                    // 2초 길게 누르면 사진 삭제
         let t = 0;

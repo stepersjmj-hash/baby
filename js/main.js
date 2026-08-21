@@ -9,8 +9,10 @@ import { initSpot } from './spot/index.js';
 import { initCount } from './count/index.js';
 import { unlock, sfx, setMuted, isMuted, audioState } from './core/audio.js';
 import { works } from './core/store.js';
+import { icon, arrow, toolIcon, ACT_ICON } from './core/icons.js';
 
 const $ = (id) => document.getElementById(id);
+const TRAY = '#5a4b34';        // 트레이 아이콘 잉크
 
 /* iPadOS 16.3 이하에는 canvas 의 roundRect 가 없다. 미로 벽·퍼즐 판·
    다른 그림 찾기 판이 이걸 쓰는데, 없으면 그리다 예외가 나서 화면이
@@ -39,53 +41,6 @@ const GROUPS = [
   { id: 'think',  title: '생각 놀이', dot: '#7ab8f2', tint: '#e8f1fc', stroke: '#4d84c4' },
   { id: 'soon',   title: '곧 나와요', dot: '#c9b88f', tint: '#f6efe2', stroke: '#a08b5f' }
 ];
-
-/* 아이콘은 이모지가 아니라 인라인 SVG 다. 이모지는 기기마다 그림이 다르고
-   색을 그룹에 맞출 수 없다. 좌표계는 48×48 로 통일. */
-const svg = (inner, color, size = 46, sw = 3) =>
-  `<svg viewBox="0 0 48 48" width="${size}" height="${size}" fill="none" stroke="${color}"` +
-  ` stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
-
-/* 글자를 쓰는 코스(한글·숫자·영어)는 "글자 + 연필 + 점선" 으로 통일한다 */
-const glyph = (txt) => (c) => svg(
-  `<text x="18" y="30" font-size="24" font-weight="800" text-anchor="middle"` +
-  ` fill="${c}" stroke="none" font-family="sans-serif">${txt}</text>` +
-  '<path d="M30 38l9-9 4 4-9 9-5 1z"/><path d="M8 41h14" stroke-dasharray="4 4"/>', c);
-
-const ICON = {
-  coloring: (c) => svg('<path d="M37 9c2 2 3 5 1 7L23 31l-6-6L32 10c2-2 3-3 5-1z"/>' +
-                       '<path d="M17 26c-3 1-5 3-6 6-1 3-2 4-4 5 4 2 9 1 12-2 2-2 2-5 1-7z"/>', c),
-  photo:    (c) => svg('<rect x="6" y="15" width="36" height="25" rx="5"/>' +
-                       '<circle cx="24" cy="27" r="7"/><path d="M17 15l3-5h8l3 5"/>', c),
-  trace:    (c) => svg('<path d="M6 32c6-12 12 10 18-2s6-8 18-8" stroke-dasharray="6 5"/>', c),
-  hangul:   glyph('가'),
-  names:    (c) => svg('<rect x="6" y="13" width="36" height="23" rx="6"/>' +
-                       '<circle cx="16" cy="24" r="4"/><path d="M25 20h11M25 28h7"/>', c),
-  number:   glyph('12'),
-  english:  glyph('Ab'),
-  maze:     (c) => svg('<path d="M24 25c0-3 5-3 5 0 0 4-10 4-10 0 0-8 15-8 15 0' +
-                       ' 0 10-20 10-20 0 0-13 25-13 25 0"/>', c),
-  dots:     (c) => svg('<circle cx="10" cy="36" r="3.5"/><circle cx="24" cy="12" r="3.5"/>' +
-                       '<circle cx="38" cy="32" r="3.5"/>' +
-                       '<path d="M12 32l10-16m4 1l10 12" stroke-dasharray="4 4"/>', c),
-  puzzle:   (c) => svg('<path d="M10 15h9a5 5 0 1 1 10 0h9v8a5 5 0 1 0 0 10v8h-9' +
-                       'a5 5 0 1 0-10 0h-9v-8a5 5 0 1 1 0-10z"/>', c),
-  count:    (c) => svg('<circle cx="14" cy="31" r="7"/><circle cx="32" cy="31" r="7"/>' +
-                       '<path d="M14 24v-7m18 7v-7m-18 0c2-2 4-2 6 0m10 0c2-2 4-2 6 0"/>', c),
-  spot:     (c) => svg('<circle cx="20" cy="20" r="11"/><path d="M29 29l11 11"/>', c),
-  sort:     (c) => svg('<rect x="8" y="8" width="13" height="13" rx="3"/>' +
-                       '<circle cx="35" cy="14" r="7"/><path d="M17 40l7-11 7 11z"/>', c)
-};
-
-/* 헤더 아이콘 (26·24px, 선이 굵다) */
-const INK = '#3a2f22';
-const ICON_SOUND = svg('<path d="M8 19v10h7l9 8V11l-9 8H8z"/><path d="M30 18c3 3 3 9 0 12"/>' +
-                       '<path d="M35 14c5 5 5 15 0 20"/>', INK, 26, 3.5);
-const ICON_MUTED = svg('<path d="M8 19v10h7l9 8V11l-9 8H8z"/>' +
-                       '<path d="M31 19l11 11M42 19L31 30"/>', INK, 26, 3.5);
-const ICON_GALLERY = svg('<rect x="5" y="9" width="38" height="30" rx="6"/>' +
-                         '<circle cx="16" cy="19" r="3.5"/><path d="M9 35l9-9 8 8 7-8 10 11"/>',
-                         INK, 24, 3.5);
 
 const ACTIVITIES = [
   { id: 'coloring', group: 'create', name: '색칠하기',      desc: '펜으로 자유롭게', ready: true },
@@ -153,7 +108,7 @@ function buildHome() {
       card.type = 'button';
       card.className = 'card' + (a.ready ? '' : ' locked');
       card.innerHTML = `
-        <span class="tile" style="background:${g.tint}">${(ICON[a.id] || ICON.sort)(g.stroke)}</span>
+        <span class="tile" style="background:${g.tint}">${(ACT_ICON[a.id] || ACT_ICON.sort)(g.stroke)}</span>
         <span class="name">${a.name}</span>
         <span class="desc">${a.desc}</span>
         ${a.ready ? '' : '<span class="badge">곧 나와요</span>'}
@@ -235,10 +190,53 @@ buildHome();
    아이가 눌러도 되돌릴 수 있는 동작이라 잠글 이유가 없다. */
 function paintSoundBtn() {
   const b = $('btn-sound');
-  b.innerHTML = isMuted() ? ICON_MUTED : ICON_SOUND;
+  b.innerHTML = icon(isMuted() ? 'mute' : 'sound', { size: 26 });
   b.classList.toggle('is-off', isMuted());
 }
-$('btn-gallery').innerHTML = ICON_GALLERY + '내 그림';
+$('btn-gallery').innerHTML = icon('gallery', { size: 24 }) + '내 그림';
+$('btn-settings').innerHTML = icon('gear', { size: 26 });
+
+/* ── 트레이 아이콘 ────────────────────────────────────────
+   버튼은 index.html 에 있고 그림은 여기서 채운다. 같은 아이콘이
+   화면마다 있으므로(홈 버튼만 5개) data-icon 한 속성으로 묶었다. */
+for (const b of document.querySelectorAll('[data-icon]')) {
+  const n = b.dataset.icon;
+  const svg = (n === 'prev' || n === 'next') ? arrow(n, { color: TRAY })
+                                             : icon(n, { color: TRAY });
+  b.insertAdjacentHTML('afterbegin', svg);
+}
+
+/* ── 손잡이 ──────────────────────────────────────────────
+   아이는 손바닥을 화면에 얹고 그린다. 쥐는 손 쪽에 버튼이 있으면
+   손이 버튼을 덮고, 얹을 자리도 없다. 그래서 버튼을 **반대쪽**으로
+   몰고 남는 쪽을 손 쉼터로 비운다 (.palm). */
+const HAND_KEY = 'haichu.hand';
+const hand = () => localStorage.getItem(HAND_KEY) === 'left' ? 'left' : 'right';
+function applyHand() {
+  document.body.dataset.hand = hand();
+  for (const c of document.querySelectorAll('.hand-card'))
+    c.classList.toggle('is-on', c.dataset.hand === hand());
+}
+/* 설명은 "손을 얹는 쪽" 으로 말한다. 홈과 그리는 화면의 버튼 위치가
+   서로 반대라 "버튼이 왼쪽으로 가요" 라고 하면 한쪽은 거짓말이 된다. */
+for (const [id, nm, desc] of [['hand-left', '왼손', '왼쪽에 손을 얹어요'],
+                              ['hand-right', '오른손', '오른쪽에 손을 얹어요']]) {
+  $(id).innerHTML = icon('hand', { size: 52, sw: 3 }) +
+                    `<span class="nm">${nm}</span><span class="desc">${desc}</span>`;
+  $(id).addEventListener('click', () => {
+    localStorage.setItem(HAND_KEY, $(id).dataset.hand);
+    applyHand();
+    sfx.tap();
+  });
+}
+applyHand();
+
+$('btn-settings').addEventListener('click', () => { sfx.tap(); $('sheet-settings').hidden = false; });
+$('btn-settings-close').addEventListener('click', () => { $('sheet-settings').hidden = true; });
+// 패널 바깥을 누르면 닫힌다
+$('sheet-settings').addEventListener('click', (e) => {
+  if (e.target.id === 'sheet-settings') $('sheet-settings').hidden = true;
+});
 paintSoundBtn();
 $('btn-sound').addEventListener('click', () => {
   setMuted(!isMuted());

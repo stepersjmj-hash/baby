@@ -11,6 +11,11 @@
   --tray:#ffffff;
   --tray-line:#e9dcc4;
   --accent:#ff8a3d;
+  /* 눌림·선택 표시는 앱 전체가 이 한 쌍만 쓴다 — 움직임(transform)이나
+     그림자 변화 없이 색만 바뀐다. 트레이 버튼·도구·굵기·단계 칩·손잡이
+     카드가 전부 같아야 아이가 "지금 골라진 것"을 한 가지 모양으로 배운다. */
+  --sel-bg:#fff3df;
+  --sel-br:#ff8a3d;
   --shadow:0 4px 14px rgba(120,84,30,.16);
   --r:22px;
   --tap:68px;
@@ -125,6 +130,48 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
   min-height:52px;
 }
 
+/* 손잡이 — 홈과 그리는 화면이 서로 **반대**다. 헷갈리기 쉬우니 이유를 적어 둔다.
+     · 그리는 화면(.tray-bottom): 버튼을 쥐는 손 **반대쪽**으로. 손바닥을 얹는
+       자리와 버튼이 겹치면 안 되니까 (핸드오프 규칙 그대로).
+     · 홈 화면: 그리지 않는 화면이라 그 이유가 없다. 손바닥을 얹을 일이
+       없는데 버튼만 반대쪽 끝으로 보내면 손을 뻗어야 해서 오히려 불편하다.
+       그래서 홈은 **쥐는 손 쪽**에 둔다 — 오른손잡이면 오른쪽. */
+[data-hand="left"] .home-head{flex-direction:row-reverse;text-align:right}
+[data-hand="left"] .home-btn:first-of-type{margin-left:0}
+[data-hand="left"] .home-title{margin-left:auto}
+
+/* ───────────── 설정 오버레이 ───────────── */
+.overlay{
+  position:absolute;inset:0;z-index:40;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(58,47,34,.45);
+}
+.overlay .panel{
+  background:#fffdf7;border-radius:28px;padding:32px 36px;
+  width:560px;max-width:90vw;
+  box-shadow:0 24px 60px rgba(58,47,34,.35);
+}
+.panel-head{display:flex;align-items:center;gap:12px}
+.panel-head h2{font-size:26px;font-weight:800;margin:0}
+.panel-close{
+  margin-left:auto;width:48px;height:48px;border-radius:50%;
+  background:#f6efe2;font-size:20px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;
+}
+.panel-q{font-size:16px;font-weight:800;opacity:.6;margin:18px 0 12px}
+.panel-note{font-size:13px;font-weight:700;opacity:.45;margin:16px 0 0}
+.hand-pick{display:flex;gap:14px}
+.hand-card{
+  flex:1;border-radius:22px;padding:20px 12px 16px;
+  background:#f6efe2;border:3px solid transparent;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+}
+.hand-card.is-on{background:var(--sel-bg);border-color:var(--sel-br)}
+.hand-card .nm{font-size:20px;font-weight:800}
+.hand-card .desc{font-size:13px;font-weight:700;opacity:.55}
+/* 왼손은 같은 그림을 뒤집어 쓴다 */
+.hand-card[data-hand="left"] svg{transform:scaleX(-1)}
+
 /* ───────────── 색칠 화면 ───────────── */
 #screen-coloring{background:var(--bg)}
 
@@ -138,7 +185,18 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .tray-top{border-bottom:1px solid var(--tray-line)}
 .tray-bottom{border-top:1px solid var(--tray-line);box-shadow:0 -2px 10px rgba(120,84,30,.10)}
 .tray-right{display:flex;align-items:center;gap:12px;margin-left:auto}
-.spacer{flex:1}
+
+/* 버튼 무리 사이 구분선. 예전에는 여기가 flex:1 여백이었는데, 이제 여백은
+   팜 레스트(.palm)가 한쪽 끝에서 맡는다 */
+.spacer{width:2px;height:44px;background:var(--tray-line);border-radius:1px;flex:0 0 auto}
+
+/* 손 쉼터 — 버튼을 쥐는 손 반대쪽으로 몰고 남는 쪽을 통째로 비운다.
+   아이는 손바닥을 화면에 얹고 그리므로, 얹을 자리를 만들어 주는 것이
+   palm rejection 만큼 중요하다. 터치를 아예 안 받는다. */
+.palm{flex:1;min-width:0;pointer-events:none}
+/* 왼손잡이면 빈 자리를 앞으로 보낸다 = 버튼이 오른쪽으로 간다.
+   (row-reverse 를 쓰면 ◀ ▶ 순서까지 뒤집혀서 안 된다) */
+[data-hand="left"] .palm{order:-1}
 
 /* 도구(크레용 모양) */
 .tools{display:flex;gap:6px;align-items:flex-start;flex-wrap:nowrap;overflow-x:auto;
@@ -148,20 +206,18 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 
 .tool{
   width:58px;min-width:58px;height:var(--tap);
-  border-radius:16px 16px 10px 10px;
-  display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
-  gap:2px;padding-bottom:6px;
+  border-radius:16px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;
   background:#f6efe2;border:2px solid transparent;
-  transform:translateY(6px);
-  transition:transform .14s cubic-bezier(.2,.9,.3,1.4),background .14s;
+  transition:background .14s,border-color .14s;
 }
-.tool .ico{font-size:28px;line-height:1}
+.tool .ico{display:flex;line-height:0}
 .tool .lbl{font-size:10px;font-weight:800;opacity:.55}
-.tool.is-on{
-  transform:translateY(-6px);
-  background:#fff3df;border-color:var(--accent);
-  box-shadow:0 6px 0 rgba(255,138,61,.28);
-}
+/* 선택 표시는 앱 전체가 같은 규칙을 쓴다 — 움직이지 않고 색만 바뀐다.
+   예전엔 도구가 위로 튀어올랐는데, 튀어오른 만큼 옆 도구와 높이가 어긋나
+   어느 게 눌린 건지 오히려 헷갈렸다. */
+.tool.is-on{background:var(--sel-bg);border-color:var(--sel-br)}
 
 /* 굵기 */
 .sizes{display:flex;gap:6px;align-items:center}
@@ -171,7 +227,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
   border:2px solid transparent;
 }
 .size i{display:block;border-radius:50%;background:#6b5c47}
-.size.is-on{background:#fff3df;border-color:var(--accent)}
+.size.is-on{background:var(--sel-bg);border-color:var(--sel-br)}
 
 /* 현재 색 */
 .swatch-btn{
@@ -187,13 +243,15 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 /* 아래 둥근 버튼 */
 .rbtn{
   width:var(--tap);height:var(--tap);border-radius:20px;background:#f6efe2;
-  display:flex;align-items:center;justify-content:center;font-size:28px;
+  display:flex;align-items:center;justify-content:center;
+  border:2px solid transparent;
   position:relative;overflow:hidden;flex:0 0 auto;
 }
-.rbtn.wide{width:auto;padding:0 22px;font-size:18px;font-weight:800;gap:8px}
-.rbtn:active{background:#efe4cf;transform:scale(.95)}
+.rbtn.wide{width:auto;padding:0 20px;font-size:18px;font-weight:800;gap:10px}
+.rbtn:active{background:var(--sel-bg);border-color:var(--sel-br)}
 .rbtn[disabled]{opacity:.3}
-.rbtn span{position:relative;z-index:1}
+.rbtn svg,.rbtn b{position:relative;z-index:1}
+.rbtn b{font-weight:800}
 .hold-fill{
   position:absolute;left:0;bottom:0;width:100%;height:0%;
   background:#ffb47a;transition:height .05s linear;
@@ -264,9 +322,13 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .lvl .ico{font-size:26px;line-height:1}
 .lvl .lbl{font-size:10px;font-weight:800;opacity:.55}
 .lvl .star{position:absolute;top:-4px;right:-4px;font-size:15px}
+/* 이름 칩의 얼굴 사진 — 가로 썸네일(퍼즐)과 달리 정사각으로 자른다.
+   사진이 붙은 칩은 이름 글자를 빼므로(trace/index.js) 그만큼 크게 쓴다. */
+.lvl .thumb.face{width:42px;height:42px;border-radius:12px}
+.lvl.has-face .thumb.face{width:56px;height:56px;border-radius:15px}
 .lvl .thumb{width:38px;height:28px;object-fit:cover;border-radius:8px;display:block;
             pointer-events:none;background:#e9dfca}
-.lvl.is-on{background:#fff3df;border-color:var(--accent)}
+.lvl.is-on{background:var(--sel-bg);border-color:var(--sel-br)}
 
 /* 난이도는 색 띠로만 알린다 — 글자를 못 읽는 나이라 하/중/상을 써 봐야 소용없다 */
 .lvl[data-hard]::after{
@@ -352,6 +414,8 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
   .tool{width:52px;min-width:52px}
   .lvl{width:56px;min-width:56px}
   .tool .lbl,.lvl .lbl{display:none}
+  /* 칩이 56 으로 좁아지므로 얼굴도 같이 줄인다 (안 그러면 칩 밖으로 넘친다) */
+  .lvl.has-face .thumb.face{width:48px;height:48px;border-radius:13px}
   .lvl-name{min-width:80px;font-size:17px}
   :root{--tap:60px}
 }

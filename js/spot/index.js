@@ -16,6 +16,7 @@
    ============================================================ */
 
 import { attachPen } from '../core/pen.js';
+import { STAR } from '../core/icons.js';
 import { VIEW, PANEL, SPOTS, buildSpot } from './scenes.js';
 import { createSpot } from './judge.js';
 import { sfx } from '../core/audio.js';
@@ -252,7 +253,7 @@ export function initSpot({ toast, goHome }) {
       b.dataset.lvl = L.id;
       b.dataset.hard = L.hard;
       b.innerHTML = `<span class="ico">${L.ico}</span><span class="lbl">${L.name}</span>` +
-                    (done.has(L.id) ? '<span class="star">⭐</span>' : '');
+                    (done.has(L.id) ? `<span class="star">${STAR}</span>` : '');
       b.addEventListener('click', () => { sfx.tap(); openLevel(i); });
       strip.appendChild(b);
     });
