@@ -50,7 +50,7 @@ const ACTIVITIES = [
   { id: 'hangul',   group: 'write',  name: '한글 쓰기',     desc: 'ㄱ ㄴ ㄷ 획순', ready: true },
   { id: 'names',    group: 'write',  name: '이름 쓰기',     desc: '우리 가족 이름', ready: true },
   { id: 'number',   group: 'write',  name: '숫자 쓰기',     desc: '1부터 100까지', ready: true },
-  { id: 'english',  group: 'write',  name: '영어 쓰기',     desc: 'A B C 획순', ready: true },
+  { id: 'english',  group: 'write',  name: '영어 쓰기',     desc: '대문자 소문자', ready: true },
 
   { id: 'maze',     group: 'think',  name: '미로 찾기',     desc: '길을 그어 탈출', ready: true },
   { id: 'dots',     group: 'think',  name: '점 잇기',       desc: '이으면 그림이!', ready: true },

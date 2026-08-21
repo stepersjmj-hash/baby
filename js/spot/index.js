@@ -16,6 +16,7 @@
    ============================================================ */
 
 import { attachPen } from '../core/pen.js';
+import { fitPaper, setOrigin } from '../core/fit.js';
 import { STAR } from '../core/icons.js';
 import { VIEW, PANEL, SPOTS, buildSpot } from './scenes.js';
 import { createSpot } from './judge.js';
@@ -36,6 +37,8 @@ export function initSpot({ toast, goHome }) {
 
   let done = new Set();
   let W = 0, H = 0, S = 1;
+  let OX = 0, OY = 0;                   // 내용을 종이 가운데로 옮기는 원점
+  const clear = (ctx) => ctx.clearRect(-OX, -OY, W, H);
   let li = 0, level = SPOTS[0];
   let scene = null, judge = null;
   let stroke = null;                    // 지금 긋는 획 (판 로컬 좌표)
@@ -43,19 +46,24 @@ export function initSpot({ toast, goHome }) {
   let party = null, raf = 0, advanceTimer = 0;
 
   /* ── 레이아웃 ─────────────────────────────────────────── */
+
+  /* 두 그림판과 그 위의 ⭐ 표시줄만 쓴다 — 그 상자를 종이에 꽉 채운다.
+     그림이 클수록 다른 곳이 잘 보인다. */
+  const BOX = {
+    x: PANEL.lx - 14, y: 34,
+    w: (PANEL.rx + PANEL.w + 14) - (PANEL.lx - 14),
+    h: (PANEL.ty + PANEL.h + 14) - 34
+  };
+
   function doLayout() {
-    const st = $('spot-stage').getBoundingClientRect();
-    if (!st.width || !st.height) return;
-    const AR = VIEW.w / VIEW.h;
-    let w = st.width - 28, h = st.height - 28;
-    if (w / h > AR) w = h * AR; else h = w / AR;
-    w = Math.max(80, Math.floor(w)); h = Math.max(56, Math.floor(h));
-    paper.style.width = w + 'px';
-    paper.style.height = h + 'px';
-    const nW = Math.round(w * DPR), nH = Math.round(h * DPR);
-    if (nW === W && nH === H) return;
-    W = nW; H = nH; S = W / VIEW.w;
-    for (const cv of [cBoard, cMark, cInk]) { cv.width = W; cv.height = H; }
+    const fit = fitPaper($('spot-stage'), paper, BOX, DPR);
+    if (!fit) return;
+    if (fit.W === W && fit.H === H) return;
+    W = fit.W; H = fit.H; S = fit.S; OX = fit.OX; OY = fit.OY;
+    for (const cv of [cBoard, cMark, cInk]) {
+      cv.width = W; cv.height = H;                      // 크기를 넣으면 변환이 초기화된다
+      setOrigin(cv.getContext('2d'), fit);
+    }
     redrawAll();
   }
 
@@ -72,7 +80,7 @@ export function initSpot({ toast, goHome }) {
   }
 
   function drawBoard() {
-    bctx.clearRect(0, 0, W, H);
+    clear(bctx);
     for (const [ox, paint] of [[PANEL.lx, scene.drawL], [PANEL.rx, scene.drawR]]) {
       drawPanel(ox);
       bctx.save();
@@ -92,7 +100,7 @@ export function initSpot({ toast, goHome }) {
 
   /** 찾은 곳 동그라미(양쪽) + 진행 ●○ */
   function drawMarks() {
-    mctx.clearRect(0, 0, W, H);
+    clear(mctx);
     mctx.lineCap = 'round';
     for (const i of judge.found) {
       const d = scene.diffs[i];
@@ -125,7 +133,7 @@ export function initSpot({ toast, goHome }) {
   function redrawAll() {
     if (!W || !scene) return;
     drawBoard(); drawMarks();
-    ictx.clearRect(0, 0, W, H);
+    clear(ictx);
   }
 
   function celebrate() {
@@ -157,7 +165,7 @@ export function initSpot({ toast, goHome }) {
       localStorage.setItem(DONE_KEY, JSON.stringify([...done]));
       buildStrip();
     }
-    ictx.clearRect(0, 0, W, H);
+    clear(ictx);
     sfx.cheer('spot');
     celebrate();
     toast('다 찾았어요! 🎉');
@@ -172,7 +180,7 @@ export function initSpot({ toast, goHome }) {
   /* ── 펜 입력 ──────────────────────────────────────────── */
   /** 화면 좌표 → 어느 그림판이든 그 판의 로컬 좌표. 판 밖이면 null */
   function toLocal(pt) {
-    const x = pt.x / S, y = pt.y / S - PANEL.ty;
+    const x = (pt.x - OX) / S, y = (pt.y - OY) / S - PANEL.ty;
     if (y < -20 || y > PANEL.h + 20) return null;
     for (const ox of [PANEL.lx, PANEL.rx]) {
       const lx = x - ox;
@@ -182,18 +190,22 @@ export function initSpot({ toast, goHome }) {
     return null;
   }
 
+  /* 펜은 캔버스 픽셀로 들어온다 — 옮겨 둔 원점만큼 같이 옮긴다 */
+  const local = (pt) => ({ ...pt, x: pt.x - OX, y: pt.y - OY });
   attachPen(paper, {
     getSize: () => [W, H],
-    onStart: (pt) => {
+    onStart: (raw) => {
       if (!judge || judge.solved) return;
+      const pt = local(raw);
       stroke = [];
       inkPrev = pt;
-      ictx.clearRect(0, 0, W, H);                        // 새 시도 = 새 획
+      clear(ictx);                        // 새 시도 = 새 획
       const l = toLocal(pt);
       if (l) stroke.push(l);
     },
-    onMove: (pts) => {
+    onMove: (raws) => {
       if (!stroke) return;
+      const pts = raws.map(local);
       ictx.strokeStyle = '#ff8a3d';
       ictx.lineCap = 'round'; ictx.lineJoin = 'round';
       ictx.lineWidth = 7 * S;
@@ -214,7 +226,7 @@ export function initSpot({ toast, goHome }) {
       stroke = null; inkPrev = null;
       if (!s || !s.length || judge.solved) return;
       const hit = judge.feed(s);
-      ictx.clearRect(0, 0, W, H);                        // 획은 판정 후 사라진다
+      clear(ictx);                        // 획은 판정 후 사라진다
       if (hit >= 0) {
         sfx.dot(judge.count - 1, judge.total);           // 찾을수록 한 음씩 올라간다
         drawMarks();

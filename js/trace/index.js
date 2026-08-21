@@ -17,32 +17,42 @@
    ============================================================ */
 
 import { attachPen } from '../core/pen.js';
-import { STAR } from '../core/icons.js';
-import { VIEW, buildLevel, createTracer } from '../core/trace.js';
+import { fitPaper, setOrigin, boxOf } from '../core/fit.js';
+import { STAR, lvlIcon, STAGE_ART } from '../core/icons.js';
+import { buildLevel, createTracer } from '../core/trace.js';
 import { sfx, voice, say } from '../core/audio.js';
 import { LINES } from './lines.js';
 import { HANGUL } from './hangul.js';
 import { NUMBERS } from './numbers.js';
 import { ENGLISH } from './english.js';
-import { MAZES } from './maze.js';
+import { MAZES, newMazes } from './maze.js';
 import { DOTS } from './dots.js';
 import { NAMES } from './names.js';
+
+/* 스테이지 위 그림(art): 출발점을 타고 가는 그림 · 도착점에서 기다리는 그림.
+   'level' 이면 그 단계의 칩 아이콘을 크게 쓴다(미로의 목적지).
+   art 가 없는 코스(선 긋기·점 잇기)는 level.from/to 이모지를 그대로 쓴다 —
+   🐝→🌻 같은 캐릭터 쌍은 UI 가 아니라 그 단계의 이야기다. */
+const PEN_STAR = { from: 'pen', to: 'star' };
 
 /* 코스 정의. guide:false 면 길을 그려 주지 않는다(미로·점 잇기). */
 const COURSES = {
   trace:  { levels: LINES,   guide: true,  tol: 44, key: 'traceDone',  voice: 'slide' },
   hangul: { levels: HANGUL,  guide: true,  tol: 40, key: 'hangulDone', voice: 'write',
-            from: '✏️', to: '⭐', lang: 'ko-KR' },
+            art: PEN_STAR, lang: 'ko-KR' },
   number: { levels: NUMBERS, guide: true,  tol: 40, key: 'numberDone', voice: 'write',
-            from: '✏️', to: '⭐', lang: 'ko-KR' },
+            art: PEN_STAR, lang: 'ko-KR' },
   english:{ levels: ENGLISH, guide: true,  tol: 40, key: 'englishDone', voice: 'write',
-            from: '✏️', to: '⭐', lang: 'en-US' },
-  maze:   { levels: MAZES,   guide: false, tol: 40, key: 'mazeDone',   voice: 'scurry' },
+            art: PEN_STAR, lang: 'en-US' },
+  /* 미로만 fresh 를 가진다 — 코스에 들어올 때마다 새로 판다.
+     같은 미로가 계속 나오면 금방 지루해진다 (칸 수·id 는 그대로라 별은 남는다). */
+  maze:   { levels: MAZES,   guide: false, tol: 40, key: 'mazeDone',   voice: 'scurry',
+            fresh: newMazes, chip: 34, art: { from: 'runner', to: 'level' } },
   dots:   { levels: DOTS,    guide: false, tol: 60, key: 'dotsDone',   voice: null },
   /* 이름 쓰기: 음절 블록이 작아 길·표시를 가늘게(road/fill/icon/badge),
      full 이면 열 때 이름을 미리 읽지 않고(intro 만) 완성 후 📣 로 듣는다 */
   names:  { levels: NAMES,   guide: true,  tol: 28, key: 'namesDone',  voice: 'write',
-            from: '✏️', to: '⭐', lang: 'ko-KR', full: true, intro: '이름을 써 보자',
+            art: PEN_STAR, lang: 'ko-KR', full: true, intro: '이름을 써 보자',
             road: 34, fill: 24, icon: 44, badge: 12, photos: true }
 };
 
@@ -78,6 +88,8 @@ export function initPractice({ toast, goHome }) {
   let done = new Set();
 
   let W = 0, H = 0, S = 1;              // S = 캔버스px / 1000×700 좌표 단위
+  let OX = 0, OY = 0;                   // 내용을 종이 가운데로 옮기는 원점
+  const clear = (ctx) => ctx.clearRect(-OX, -OY, W, H);
   let li = 0, level = built[0], tracer = null;
   let filled = [];                      // 획별로 어디까지 칠했는지
   let drawing = false, party = null;
@@ -100,20 +112,44 @@ export function initPractice({ toast, goHome }) {
   let dotAt = [], dotsHit = 0;
 
   /* ── 레이아웃 ─────────────────────────────────────────── */
-  function layout() {
-    const st = $('trace-stage').getBoundingClientRect();
-    if (!st.width || !st.height) return;               // 아직 화면에 안 붙었다
-    const AR = VIEW.w / VIEW.h;
-    let w = st.width - 28, h = st.height - 28;
-    if (w / h > AR) w = h * AR; else h = w / AR;
-    w = Math.max(80, Math.floor(w)); h = Math.max(56, Math.floor(h));
-    paper.style.width = w + 'px';
-    paper.style.height = h + 'px';
 
-    const nW = Math.round(w * DPR), nH = Math.round(h * DPR);
-    if (nW === W && nH === H) return;
-    W = nW; H = nH; S = W / VIEW.w;
-    for (const cv of [cGuide, cFill, cInk, cFx]) { cv.width = W; cv.height = H; }
+  /* 코스마다 실제로 쓰는 자리가 다르다 — 미로는 판 전체를, 이름 쓰기는
+     넓고 낮은 띠를, 한글은 가운데 네모를 쓴다. 그 상자를 종이에 꽉 채워야
+     같은 화면에서도 글자가 커진다 (아이패드 미니에서 특히 크게 다르다). */
+  const boxes = {};
+  const pointsOf = (L) => {
+    const pts = [];
+    for (const p of L.paths) pts.push(...p);
+    for (const [x, y, w, h] of L.walls ?? []) pts.push({ x, y }, { x: x + w, y: y + h });
+    for (const [x, y] of L.dots ?? []) pts.push({ x, y });
+    return pts;
+  };
+  // 길 굵기·출발/도착 그림이 경로 밖으로 삐져나오는 만큼 여백을 둔다
+  const boxPad = () => Math.max(course.road ?? ROAD, course.icon ?? ICON) / 2 + 12;
+
+  function courseBox(id = courseId) {
+    if (boxes[id]) return boxes[id];
+    const pts = [];
+    for (const L of baked[id]) pts.push(...pointsOf(L));
+    return (boxes[id] = boxOf(pts, boxPad()));
+  }
+
+  function layout() {
+    const fit = fitPaper($('trace-stage'), paper, courseBox(), DPR);
+    if (!fit) return;                                  // 아직 화면에 안 붙었다
+    // 크기는 코스 전체 상자로 정하고(단계마다 글자가 커졌다 작아졌다 하면
+    // 안 된다), 자리는 이 단계의 상자로 잡는다 — 늘 종이 한가운데.
+    const b = boxOf(pointsOf(level), boxPad());
+    fit.OX = Math.round(fit.W / 2 - (b.x + b.w / 2) * fit.S);
+    fit.OY = Math.round(fit.H / 2 - (b.y + b.h / 2) * fit.S);
+
+    const same = fit.W === W && fit.H === H && fit.S === S && fit.OX === OX && fit.OY === OY;
+    W = fit.W; H = fit.H; S = fit.S; OX = fit.OX; OY = fit.OY;
+    if (same) return;
+    for (const cv of [cGuide, cFill, cInk, cFx]) {
+      cv.width = W; cv.height = H;                     // 크기를 넣으면 변환이 초기화된다
+      setOrigin(cv.getContext('2d'), fit);
+    }
     redrawAll();
   }
 
@@ -132,7 +168,7 @@ export function initPractice({ toast, goHome }) {
 
   /** 배경(길·벽·점). 단계가 바뀌거나 화면 크기가 바뀔 때만 부른다 */
   function drawGuide() {
-    gctx.clearRect(0, 0, W, H);
+    clear(gctx);
     gctx.lineCap = 'round'; gctx.lineJoin = 'round';
 
     if (level.walls) {                                  // 미로 벽
@@ -191,9 +227,40 @@ export function initPractice({ toast, goHome }) {
     }
   }
 
+  /* SVG 는 캔버스에 바로 못 찍는다 — 이미지로 한 번 구워 캐시한다.
+     다 구워지면 그 자리에 나타나도록 drawFx 를 한 번 더 부른다.
+     (사파리는 width/height 없는 SVG 이미지를 안 그린다 → STAGE_ART 참고) */
+  const artCache = new Map();
+  function bake(key, svg) {
+    let im = artCache.get(key);
+    if (!im) {
+      im = new Image();
+      im.onload = () => { if (W) drawFx(); };
+      // ★ 이미지로 쓰는 SVG 에는 xmlns 가 있어야 한다. HTML 안에 그대로
+      //   넣을 때(칩)는 없어도 되지만, data URI 로 <img> 에 물리면 없는
+      //   순간 조용히 로드 실패한다 (onerror 도 안 보고 있으면 그냥 안 나온다).
+      im.src = 'data:image/svg+xml;charset=utf-8,' +
+               encodeURIComponent(svg.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" '));
+      artCache.set(key, im);
+    }
+    return (im.complete && im.naturalWidth) ? im : null;
+  }
+
+  /** 코스가 지정한 스테이지 그림. 없거나 아직 안 구워졌으면 null */
+  function artOf(kind) {
+    if (!kind) return null;
+    if (kind === 'level') {
+      const svg = lvlIcon(courseId, level.id, 128);
+      return svg ? bake(courseId + ':' + level.id, svg) : null;
+    }
+    return STAGE_ART[kind] ? bake(kind, STAGE_ART[kind]) : null;
+  }
+  const stamp = (ctx, im, x, y, size) =>
+    ctx.drawImage(im, x - size / 2, y - size / 2, size, size);
+
   /** 출발/도착 그림, 획 번호, 칭찬 반짝이 */
   function drawFx(now = performance.now()) {
-    xctx.clearRect(0, 0, W, H);
+    clear(xctx);
     const si = Math.min(tracer.stroke, level.paths.length - 1);
     const p = level.paths[si];
 
@@ -219,7 +286,12 @@ export function initPractice({ toast, goHome }) {
     }
 
     const goal = p[p.length - 1];
-    emoji(xctx, level.to ?? course.to ?? '⭐', goal.x * S, goal.y * S, iconSz() * S);
+    const goalArt = artOf(course.art?.to);
+    // 단계 아이콘(미로 목적지)은 제 상자 안에 여백이 있어 조금 키워야
+    // 주인공과 무게가 맞는다. 별·연필은 그림이 상자를 꽉 채운다.
+    if (goalArt) stamp(xctx, goalArt, goal.x * S, goal.y * S,
+                       iconSz() * S * (course.art.to === 'level' ? 1.3 : 1));
+    else emoji(xctx, level.to ?? course.to ?? '⭐', goal.x * S, goal.y * S, iconSz() * S);
 
     if (!tracer.finished) {
       const head = tracer.head();
@@ -229,7 +301,9 @@ export function initPractice({ toast, goHome }) {
         xctx.strokeStyle = '#3fb950'; xctx.lineWidth = 5 * S;
         xctx.beginPath(); xctx.arc(head.x * S, head.y * S, iconSz() * 0.72 * S * pulse, 0, 6.283); xctx.stroke();
       }
-      emoji(xctx, level.from ?? course.from ?? '✏️', head.x * S, head.y * S, iconSz() * S);
+      const headArt = artOf(course.art?.from);
+      if (headArt) stamp(xctx, headArt, head.x * S, head.y * S, iconSz() * S);
+      else emoji(xctx, level.from ?? course.from ?? '✏️', head.x * S, head.y * S, iconSz() * S);
     }
 
     if (party) {
@@ -245,8 +319,8 @@ export function initPractice({ toast, goHome }) {
     filled = level.paths.map(() => 0);      // 화면 크기를 아직 몰라도 상태는 맞춰 둔다
     if (!W) return;
     drawGuide();
-    fctx.clearRect(0, 0, W, H);
-    ictx.clearRect(0, 0, W, H);
+    clear(fctx);
+    clear(ictx);
     paintProgress();
     drawFx();
     animate();
@@ -326,7 +400,7 @@ export function initPractice({ toast, goHome }) {
       localStorage.setItem(course.key, JSON.stringify([...done]));
       buildStrip();
     }
-    ictx.clearRect(0, 0, W, H);
+    clear(ictx);
     vox?.stop(); vox = null;          // 쓰는 소리를 끄고 팡파르만 들리게
     sfx.cheer(courseId);
     // 읽기는 여기서 하지 않는다 — 완성은 보통 펜이 움직이는 중에 판정되는데,
@@ -346,12 +420,16 @@ export function initPractice({ toast, goHome }) {
   }
 
   let inkPrev = null;
+  /* 펜은 캔버스 픽셀로 들어온다. 컨텍스트 원점을 옮겨 뒀으므로
+     들어오는 자리에서 한 번만 같이 옮겨 주면 아래는 그대로다. */
+  const local = (pt) => ({ ...pt, x: pt.x - OX, y: pt.y - OY });
   attachPen(paper, {
     getSize: () => [W, H],
-    onStart: (pt) => {
+    onStart: (raw) => {
+      const pt = local(raw);
       if (!tracer || tracer.finished) return;
       drawing = true;
-      ictx.clearRect(0, 0, W, H);                     // 시도할 때마다 자국은 새로
+      clear(ictx);                     // 시도할 때마다 자국은 새로
       inkPrev = pt;
       vox?.stop();
       vox = course.voice ? voice(course.voice) : null;
@@ -359,8 +437,9 @@ export function initPractice({ toast, goHome }) {
       feed(pt);
       animate();
     },
-    onMove: (pts) => {
+    onMove: (raws) => {
       if (!drawing) return;
+      const pts = raws.map(local);
       ictx.strokeStyle = '#ded2b8';                   // 불투명 — 겹쳐도 진해지지 않는다
       ictx.lineCap = 'round'; ictx.lineJoin = 'round';
       ictx.lineWidth = 7 * S;
@@ -439,6 +518,7 @@ export function initPractice({ toast, goHome }) {
     $('btn-trace-next').disabled = li === built.length - 1;
     for (const el of document.querySelectorAll('#trace-strip .lvl'))
       el.classList.toggle('is-on', el.dataset.lvl === level.id);
+    layout();                                   // 이 단계에 맞춰 자리를 다시 잡는다
     redrawAll();
   }
 
@@ -491,9 +571,17 @@ function tryFace(chip, name) {
     built.forEach((L, i) => {
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'lvl' + (L.id === level?.id ? ' is-on' : '');
+      // lbl 이 따로 있으면 짝을 보여 주는 칩이다 (영어: 위 A, 아래 a).
+      // 좁은 화면에서 라벨을 숨기는 규칙에서 .pair 는 빠진다 — 소문자가
+      // 이름표가 아니라 내용이라 사라지면 안 된다.
+      b.className = 'lvl' + (L.lbl ? ' pair' : '') + (L.id === level?.id ? ' is-on' : '');
       b.dataset.lvl = L.id;
-      b.innerHTML = `<span class="ico">${L.ico}</span><span class="lbl">${L.name}</span>` +
+      if (L.hard) b.dataset.hard = L.hard;      // 난이도 색 띠 (선 긋기만 있다)
+      // 선 긋기·미로 칩은 SVG 가 있다 (icons.js 의 LVL_PATHS).
+      // 한글·숫자·영어는 글자 자체가 아이콘이라 L.ico 를 그대로 쓴다.
+      const art = lvlIcon(courseId, L.id, course.chip ?? 32);
+      b.innerHTML = `<span class="ico${art ? ' art' : ''}">${art || L.ico}</span>` +
+                    `<span class="lbl">${L.lbl ?? L.name}</span>` +
                     (done.has(L.id) ? `<span class="star">${STAR}</span>` : '');
       b.addEventListener('click', () => {
         sfx.tap();
@@ -549,6 +637,12 @@ function tryFace(chip, name) {
     enter(id) {
       courseId = id in COURSES ? id : 'trace';
       course = COURSES[courseId];
+      // 열 때마다 새로 만드는 코스(미로)는 여기서 다시 굽는다
+      if (course.fresh) {
+        course.levels = course.fresh();
+        baked[courseId] = course.levels.map(L => buildLevel(L));
+        delete boxes[courseId];                 // 상자도 다시 재 둔다
+      }
       built = baked[courseId];
       done = new Set(JSON.parse(localStorage.getItem(course.key) || '[]'));
 

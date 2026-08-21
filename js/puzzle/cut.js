@@ -32,6 +32,8 @@ export const PIECES = { 1: 3, 2: 5, 3: 8 };
  * min 을 지키다 조각 수를 못 채우면 min 을 줄여 다시 시도한다
  * (min 92 면 8조각은 항상 나온다 — 넓이 계산상 92²×7 < 전체).
  */
+const MAXW = 300;               // 조각 가로 상한 (흩는 자리에 들어가는 크기)
+
 function cutRects(n, w, h, rnd, min = 112) {
   const rects = [{ x: 0, y: 0, w, h }];
   let guard = 0;
@@ -40,7 +42,10 @@ function cutRects(n, w, h, rnd, min = 112) {
     const r = rects.shift();
     const canV = r.w >= min * 2, canH = r.h >= min * 2;
     if (!canV && !canH) { rects.push(r); break; }
-    const vert = canV && (!canH || rnd() < (r.w >= r.h ? 0.72 : 0.28));
+    // 가로가 MAXW 를 넘으면 반드시 세로로 가른다. 가로로만 잘라 판만큼
+    // 넓은 띠가 나오면 오른쪽 흩는 자리에 못 들어가 판을 덮거나 화면
+    // 밖으로 나간다 (아이패드에서 조각이 반쯤 잘려 보이던 원인).
+    const vert = canV && (!canH || r.w > MAXW || rnd() < (r.w >= r.h ? 0.72 : 0.28));
     const size = vert ? r.w : r.h;
     const cut = Math.max(min, Math.min(size - min, Math.round(size * (0.36 + rnd() * 0.28))));
     if (vert) rects.push({ x: r.x, y: r.y, w: cut, h: r.h },
@@ -132,14 +137,27 @@ export function buildPuzzle(level, seed = 1) {
     };
   });
 
-  // 오른쪽에 흩어 둔다
+  // 오른쪽에 흩어 둔다. 조각(3조각짜리)은 흩는 자리보다 클 때가 있는데,
+  // 그때는 시작점도 화면 안쪽(hi)으로 당긴다 — 안 당기면 조각이 화면
+  // 밖으로 반쯤 나가 잘린다.
+  // 세로 자리는 고르게 나눠 준다. 전부 난수로 두면 큰 조각(3조각짜리)이
+  // 한자리에 포개져 아래 조각이 안 보인다. 어느 조각이 어느 칸에 갈지는
+  // 섞는다 — 자른 순서가 놓인 순서로 드러나면 힌트가 된다.
   const srnd = rnd;
-  for (const p of pieces) {
-    const hw = p.rect.w / 2 + p.margin, hh = p.rect.h / 2 + p.margin;
-    const x0 = Math.max(SCAT.x + hw, SCAT.x), x1 = Math.min(SCAT.x + SCAT.w, VIEW.w - hw - 6);
-    const y0 = Math.max(SCAT.y + hh, SCAT.y), y1 = Math.min(SCAT.y + SCAT.h, VIEW.h - hh - 6);
-    p.pos = { x: x0 + srnd() * Math.max(1, x1 - x0), y: y0 + srnd() * Math.max(1, y1 - y0) };
+  const slot = pieces.map((_, i) => i);
+  for (let i = slot.length - 1; i > 0; i--) {
+    const j = Math.floor(srnd() * (i + 1));
+    [slot[i], slot[j]] = [slot[j], slot[i]];
   }
+  pieces.forEach((p, i) => {
+    const hw = p.rect.w / 2 + p.margin, hh = p.rect.h / 2 + p.margin;
+    const hiX = VIEW.w - hw - 6, hiY = VIEW.h - hh - 6;
+    const x0 = Math.min(SCAT.x + hw, hiX), x1 = Math.min(SCAT.x + SCAT.w, hiX);
+    const y0 = Math.min(SCAT.y + hh, hiY), y1 = Math.min(SCAT.y + SCAT.h, hiY);
+    const t = pieces.length > 1 ? slot[i] / (pieces.length - 1) : 0.5;
+    p.pos = { x: x0 + srnd() * Math.max(0, x1 - x0),
+              y: y0 + t * Math.max(0, y1 - y0) };
+  });
   return pieces;
 }
 

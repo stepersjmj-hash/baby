@@ -19,57 +19,57 @@ const PI = Math.PI;
 
 export const LINES = [
   {
-    id: 'h', name: '가로줄', ico: '➡️', from: '🐝', to: '🌻',
+    id: 'h', name: '가로줄', hard: 1, ico: '➡️', from: '🐝', to: '🌻',
     strokes: [poly([[150, 350], [850, 350]])]
   },
   {
-    id: 'v', name: '세로줄', ico: '⬇️', from: '☁️', to: '🌱',
+    id: 'v', name: '세로줄', hard: 1, ico: '⬇️', from: '☁️', to: '🌱',
     strokes: [poly([[500, 130], [500, 570]])]
   },
   {
-    id: 'd', name: '비스듬', ico: '↘️', from: '🐦', to: '🌳',
+    id: 'd', name: '비스듬', hard: 1, ico: '↘️', from: '🐦', to: '🌳',
     strokes: [poly([[170, 160], [830, 550]])]
   },
   {
-    id: 'arch', name: '무지개', ico: '🌈', from: '🐰', to: '🥕',
+    id: 'arch', name: '무지개', hard: 1, ico: '🌈', from: '🐰', to: '🥕',
     strokes: [t => ({ x: 150 + 700 * t, y: 560 - Math.sin(Math.PI * t) * 330 })]
   },
   {
-    id: 'wave', name: '물결', ico: '〰️', from: '🐟', to: '🫧',
+    id: 'wave', name: '물결', hard: 1, ico: '〰️', from: '🐟', to: '🫧',
     strokes: [t => ({ x: 150 + 700 * t, y: 350 - Math.sin(t * Math.PI * 4) * 115 })]
   },
   {
-    id: 'zig', name: '지그재그', ico: '⚡', from: '🐿️', to: '🌰',
+    id: 'zig', name: '지그재그', hard: 1, ico: '⚡', from: '🐿️', to: '🌰',
     strokes: [poly([[160, 170], [276, 530], [393, 170], [510, 530],
                     [626, 170], [743, 530], [860, 170]])]
   },
   {
-    id: 'steps', name: '계단', ico: '🪜', from: '🐜', to: '🍯',
+    id: 'steps', name: '계단', hard: 1, ico: '🪜', from: '🐜', to: '🍯',
     strokes: [poly([[170, 560], [170, 460], [310, 460], [310, 360], [450, 360],
                     [450, 260], [590, 260], [590, 160], [830, 160]])]
   },
   {
-    id: 'cross', name: '십자', ico: '➕', from: '✏️', to: '⭐',
+    id: 'cross', name: '십자', hard: 1, ico: '➕', from: '✏️', to: '⭐',
     strokes: [poly([[160, 350], [840, 350]]),          // 1획 가로
               poly([[500, 130], [500, 570]])]          // 2획 세로
   },
   {
-    id: 'circle', name: '동그라미', ico: '⭕', from: '🐛', to: '🍎',
+    id: 'circle', name: '동그라미', hard: 2, ico: '⭕', from: '🐛', to: '🍎',
     strokes: [t => {                                    // 맨 위에서 시계 방향
       const a = -Math.PI / 2 + t * Math.PI * 2;
       return { x: 500 + Math.cos(a) * 215, y: 350 + Math.sin(a) * 215 };
     }]
   },
   {
-    id: 'square', name: '네모', ico: '⬜', from: '🚗', to: '🏁',
+    id: 'square', name: '네모', hard: 2, ico: '⬜', from: '🚗', to: '🏁',
     strokes: [poly([[290, 150], [710, 150], [710, 550], [290, 550], [290, 150]])]
   },
   {
-    id: 'tri', name: '세모', ico: '🔺', from: '🐧', to: '🐟',
+    id: 'tri', name: '세모', hard: 2, ico: '🔺', from: '🐧', to: '🐟',
     strokes: [poly([[500, 140], [830, 555], [170, 555], [500, 140]])]
   },
   {
-    id: 'spiral', name: '나선', ico: '🌀', from: '🐌', to: '🍃', tol: 38,
+    id: 'spiral', name: '나선', hard: 2, ico: '🌀', from: '🐌', to: '🍃', tol: 38,
     strokes: [t => {                                    // 가운데서 밖으로 두 바퀴
       const a = -Math.PI / 2 + t * Math.PI * 4;
       const r = 70 + 210 * t;
@@ -85,21 +85,21 @@ export const LINES = [
   {
     // 반복 곡선은 이웃 교차점이 진행률로 lookahead(16%)보다 멀어야 한다.
     // 5반주기(간격 20%)는 tol 여유까지 더하면 아슬아슬하게 닿아서 2주기로 줄였다.
-    id: 'wave2', name: '큰 물결', ico: '🌊', from: '⛵', to: '🏝️',
+    id: 'wave2', name: '큰 물결', hard: 2, ico: '🌊', from: '⛵', to: '🏝️',
     strokes: [t => ({ x: 150 + 700 * t, y: 355 - Math.sin(t * PI * 4) * 170 })]
   },
   {
-    id: 'snake', name: '뱀길', ico: '🐍', from: '🐍', to: '🐸',
+    id: 'snake', name: '뱀길', hard: 2, ico: '🐍', from: '🐍', to: '🐸',
     strokes: [poly([[160, 165], [840, 165], [840, 315], [160, 315],
                     [160, 465], [840, 465], [840, 565], [500, 565]])]
   },
   {
-    id: 'bolt', name: '번개', ico: '⚡', from: '☁️', to: '🌱',
+    id: 'bolt', name: '번개', hard: 2, ico: '⚡', from: '☁️', to: '🌱',
     strokes: [poly([[560, 135], [330, 350], [520, 370], [400, 565],
                     [660, 330], [480, 310], [640, 135]])]
   },
   {
-    id: 'cloud', name: '구름', ico: '☁️', from: '🐦', to: '🌤️', tol: 40,
+    id: 'cloud', name: '구름', hard: 3, ico: '☁️', from: '🐦', to: '🌤️', tol: 40,
     strokes: [poly([
       ...arc(255, 390, 100, 100, PI, 2 * PI, 18),
       ...arc(425, 340, 90, 105, PI, 2 * PI, 18),
@@ -108,7 +108,7 @@ export const LINES = [
     ])]
   },
   {
-    id: 'star2', name: '별', ico: '⭐', from: '🚀', to: '🌟', tol: 38,
+    id: 'star2', name: '별', hard: 3, ico: '⭐', from: '🚀', to: '🌟', tol: 38,
     strokes: [poly((() => {                              // 꼭짓점 5개, 위에서 시작
       const pts = [];
       for (let i = 0; i <= 10; i++) {
@@ -120,7 +120,7 @@ export const LINES = [
     })())]
   },
   {
-    id: 'heart', name: '하트', ico: '❤️', from: '💛', to: '💖', tol: 40,
+    id: 'heart', name: '하트', hard: 3, ico: '❤️', from: '💛', to: '💖', tol: 40,
     strokes: [t => {                                     // 위 가운데서 오른쪽으로
       const a = t * PI * 2;
       return { x: 500 + 14.5 * Math.pow(Math.sin(a), 3) * 16,
@@ -129,14 +129,14 @@ export const LINES = [
     }]
   },
   {
-    id: 'fig8', name: '8자', ico: '♾️', from: '🐝', to: '🌸', tol: 38,
+    id: 'fig8', name: '8자', hard: 3, ico: '♾️', from: '🐝', to: '🌸', tol: 38,
     strokes: [t => {                                     // 가운데서 오른쪽 위로
       const a = t * PI * 2;
       return { x: 500 + Math.sin(a) * 260, y: 350 + Math.sin(2 * a) * 165 };
     }]
   },
   {
-    id: 'flower2', name: '꽃잎', ico: '🌸', from: '🐛', to: '🦋', tol: 34,
+    id: 'flower2', name: '꽃잎', hard: 3, ico: '🌸', from: '🐛', to: '🦋', tol: 34,
     strokes: [t => {                                     // 꽃잎 4장 장미곡선
       const a = t * PI * 2;
       const r = Math.abs(Math.sin(2 * a)) * 235;
@@ -144,12 +144,12 @@ export const LINES = [
     }]
   },
   {
-    id: 'snail', name: '달팽이집', ico: '🐌', from: '🐌', to: '🏠', tol: 32,
+    id: 'snail', name: '달팽이집', hard: 3, ico: '🐌', from: '🐌', to: '🏠', tol: 32,
     strokes: [poly([[500, 350], [590, 350], [590, 440], [410, 440], [410, 260],
                     [680, 260], [680, 530], [320, 530], [320, 170], [790, 170]])]
   },
   {
-    id: 'spiral2', name: '큰 나선', ico: '🌪️', from: '🍂', to: '🌰', tol: 26,
+    id: 'spiral2', name: '큰 나선', hard: 3, ico: '🌪️', from: '🍂', to: '🌰', tol: 26,
     strokes: [t => {                                     // 세 바퀴 — 궤도 간격 72
       const a = -PI / 2 + t * PI * 6;
       const r = 42 + 213 * t;

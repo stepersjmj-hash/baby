@@ -56,12 +56,17 @@
     $('btn-undo').click(); await sleep(30);
   }
 
-  // 2) 물감통 — 아이스크림 콘 안쪽
+  // 2) 물감통. 밑그림은 열 때마다 무작위라 한 점만 찍으면 하필 선 위에
+  //    떨어져 아무것도 안 칠해질 수 있다 — 칠해질 때까지 몇 곳을 시도한다.
   pick('fill');
   const b0 = inkCount();
-  pe('pointerdown', 0.5, 0.82, 0.5); pe('pointerup', 0.5, 0.82, 0);
-  await sleep(60);
-  const b1 = inkCount();
+  let b1 = b0;
+  for (const [fx, fy] of [[0.5, 0.82], [0.5, 0.5], [0.3, 0.3], [0.72, 0.68]]) {
+    pe('pointerdown', fx, fy, 0.5); pe('pointerup', fx, fy, 0);
+    await sleep(60);
+    b1 = inkCount();
+    if (b1 - b0 > 500) break;
+  }
   log.push(`fill: +${b1 - b0}px ${b1 - b0 > 500 ? 'OK' : 'FAIL'}`);
 
   // 3) 되돌리기 / 다시하기
@@ -79,12 +84,18 @@
   const e1 = inkCount();
   log.push(`eraser: ${e1 - e0}px ${e1 < e0 ? 'OK' : 'FAIL'}`);
 
-  // 5) 스티커
+  // 5) 스티커 — 알파 수가 아니라 "달라진 픽셀"로 센다. 물감통이 넓게
+  //    칠해 놓은 자리에 찍으면 색만 바뀌고 알파 수는 그대로다.
   pick('sticker'); $('btn-color-close').click();
-  const s0 = inkCount();
+  const s0 = pctx.getImageData(0, 0, paint.width, paint.height).data;
   pe('pointerdown', 0.2, 0.5, 0.5); pe('pointerup', 0.2, 0.5, 0);
   await sleep(40);
-  log.push(`sticker: +${inkCount() - s0}px ${inkCount() > s0 ? 'OK' : 'FAIL'}`);
+  const s1 = pctx.getImageData(0, 0, paint.width, paint.height).data;
+  let moved = 0;
+  for (let i = 0; i < s1.length; i += 4)
+    if (s0[i] !== s1[i] || s0[i + 1] !== s1[i + 1] ||
+        s0[i + 2] !== s1[i + 2] || s0[i + 3] !== s1[i + 3]) moved++;
+  log.push(`sticker: ${moved}px ${moved > 200 ? 'OK' : 'FAIL'}`);
 
   // 6) 크기 변경 후 재생 (화면 회전 시나리오)
   const wasInk = inkCount();

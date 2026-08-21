@@ -144,3 +144,121 @@ export const ACT_ICON = {
   sort:     act('<rect x="8" y="8" width="13" height="13" rx="3"/>' +
                 '<circle cx="35" cy="14" r="7"/><path d="M17 40l7-11 7 11z"/>')
 };
+
+/* ── 단계 칩 아이콘 (선 긋기 22 · 미로 14) ───────────────────
+   칩에도 이모지를 쓰지 않는다. 선 긋기는 **그 단계가 실제로 그릴 선**을
+   제 색 선으로 보여 주고(⚡ 같은 대충 비슷한 그림이 아니라), 미로는
+   목적지를 말랑 채움으로 보여 준다.
+
+   한글·숫자·영어 칩은 글자 자체가 아이콘이라 여기 없다. 세어보기·다른
+   그림 찾기 칩의 이모지는 UI 가 아니라 **문제의 내용**이라 그대로 둔다.
+
+   키는 `<코스>:<단계 id>`. 없으면 러너가 level.ico 로 되돌아간다.
+   원본은 design_handoff_home_redesign/서브화면 v2.dc.html 의
+   traceDefs · mazeDefs. */
+const LVL_PATHS = {
+  'trace:h': '<path d="M8 24h32" stroke="#4a90ff"/><path d="M32 16l8 8-8 8" stroke="#4a90ff"/>',
+  'trace:v': '<path d="M24 8v32" stroke="#4fd06b"/><path d="M16 32l8 8 8-8" stroke="#4fd06b"/>',
+  'trace:d': '<path d="M10 38L38 10" stroke="#9b7bff"/><path d="M38 22V10H26" stroke="#9b7bff"/>',
+  'trace:arch': ['<path d="M9 36a15 15 0 0 1 30 0" stroke="#ff5a5a"/>' +
+                '<path d="M16 36a8 8 0 0 1 16 0" stroke="#ffc94d"/>' +
+                '<path d="M22 36a2 2 0 0 1 4 0" stroke="#4fd06b"/>',
+                4.5],
+  'trace:wave': '<path d="M6 24c4-9 8-9 12 0s8 9 12 0 8-9 12 0" stroke="#46cfe0"/>',
+  'trace:zig': '<path d="M8 33l8-16 8 16 8-16 8 16" stroke="#ff8a3d"/>',
+  'trace:steps': '<path d="M8 38V28h11V18h11V8h10" stroke="#b07a4a"/>',
+  'trace:cross': '<path d="M24 9v30M9 24h30" stroke="#8d6be8"/>',
+  'trace:circle': '<circle cx="24" cy="24" r="14" stroke="#ff5f9e"/>',
+  'trace:square': '<rect x="10" y="10" width="28" height="28" rx="5" stroke="#b39ddb"/>',
+  'trace:tri': '<path d="M24 9L40 38H8z" stroke="#ff6b5a"/>',
+  'trace:spiral': '<path d="M24 25c0-3 5-3 5 0 0 4-10 4-10 0 0-8 15-8 15 0 0 10-20 10-20 0 0-13 25-13 25 0" stroke="#9b7bff" stroke-width="2.6"/>',
+  'trace:wave2': '<path d="M5 26c6-16 12-16 19 0s13 16 19 0" stroke="#4a90ff"/>',
+  'trace:snake': '<path d="M10 8h20a8 8 0 0 1 0 16H18a8 8 0 0 0 0 16h20" stroke="#4fbf7a"/>',
+  'trace:bolt': '<path d="M27 6L14 27h9l-4 15 15-22h-9l6-14z" stroke="#ffb02e" stroke-width="4"/>',
+  'trace:cloud': '<path d="M14 34a7 7 0 0 1 1-14 9 9 0 0 1 17-2 7 7 0 0 1 2 16z" stroke="#9db4c9"/>',
+  'trace:star2': '<path d="M24 7l4.8 9.8L40 18.3l-8 7.8 1.9 11L24 32l-9.9 5.1 1.9-11-8-7.8 11.2-1.5z" stroke="#f2b23c" stroke-width="4"/>',
+  'trace:heart': '<path d="M24 40S7 29 7 17a8.5 8.5 0 0 1 17-1 8.5 8.5 0 0 1 17 1c0 12-17 23-17 23z" stroke="#ff5a7a" stroke-width="4.5"/>',
+  'trace:fig8': '<path d="M24 24c-7-3-7-15 0-15s7 12 0 15-7 15 0 15 7-12 0-15z" stroke="#46cfe0" stroke-width="4.5"/>',
+  'trace:flower2': '<circle cx="24" cy="13" r="6" stroke="#ff8fc4" stroke-width="4"/>' +
+                   '<circle cx="34.5" cy="21" r="6" stroke="#ff8fc4" stroke-width="4"/>' +
+                   '<circle cx="30.5" cy="33" r="6" stroke="#ff8fc4" stroke-width="4"/>' +
+                   '<circle cx="17.5" cy="33" r="6" stroke="#ff8fc4" stroke-width="4"/>' +
+                   '<circle cx="13.5" cy="21" r="6" stroke="#ff8fc4" stroke-width="4"/>',
+  'trace:snail': '<path d="M26 26c0-2 4-2 4 0 0 3-8 3-8 0 0-6 12-6 12 0 0 8-16 8-16 0 0-10 20-10 20 0" stroke="#b07a4a" stroke-width="2.6"/>' +
+                 '<path d="M10 38c3-3 6-4 10-4" stroke="#8a5f3a" stroke-width="2.6"/>',
+  'trace:spiral2': '<path d="M24 26c0-2.5 4.5-2.5 4.5 0 0 3.5-9 3.5-9 0 0-7 13.5-7 13.5 0 0 9-18 9-18 0 0-11.5 22.5-11.5 22.5 0 0 13-27 13-27 0" stroke="#4a90ff" stroke-width="2.6"/>',
+  'maze:z1': '<path d="M6 32L42 18v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2z" fill="#ffd24d"/>' +
+             '<path d="M6 32L42 18l-4-6L6 26z" fill="#ffe28a"/>' +
+             '<circle cx="16" cy="30" r="2.6" fill="#e8b32e"/><circle cx="27" cy="31" r="2" fill="#e8b32e"/>' +
+             '<circle cx="35" cy="27" r="1.8" fill="#e8b32e"/>',
+  'maze:z5': '<path d="M14 18a5 5 0 1 1 6-6l8 0a5 5 0 1 1 6 6 5 5 0 1 1-6 6h-8a5 5 0 1 1-6-6z" fill="#f2ead8" stroke="#d8ccb0" stroke-width="2" transform="rotate(35 24 24) translate(0 6)"/>',
+  'maze:z2': '<path d="M20 16L10 40l24-10z" fill="#ff8a3d" transform="rotate(-8 24 24)"/>' +
+             '<path d="M26 14l6-8m-2 9l8-5m-9-1l1-8" stroke="#4fbf5a" stroke-width="4" stroke-linecap="round"/>' +
+             '<path d="M17 26l6 3m-8 4l6 3" stroke="#e06a1f" stroke-width="2.5" stroke-linecap="round"/>',
+  'maze:z6': '<g fill="#ff8fc4"><circle cx="24" cy="12" r="6.5"/><circle cx="35" cy="20" r="6.5"/>' +
+             '<circle cx="31" cy="33" r="6.5"/><circle cx="17" cy="33" r="6.5"/>' +
+             '<circle cx="13" cy="20" r="6.5"/></g><circle cx="24" cy="23.5" r="5.5" fill="#ffd166"/>',
+  'maze:z7': '<circle cx="24" cy="20" r="13" fill="#ffe6f2"/>' +
+             '<path d="M24 20c0-2.5 4-2.5 4 0 0 3.5-8 3.5-8 0 0-6.5 12-6.5 12 0 0 8-16 8-16 0" fill="none" stroke="#ff5f9e" stroke-width="4" stroke-linecap="round"/>' +
+             '<path d="M24 33v9" stroke="#d8ccb0" stroke-width="4" stroke-linecap="round"/>',
+  'maze:z3': '<path d="M13 22c0 10 5 18 11 18s11-8 11-18z" fill="#b07a4a"/>' +
+             '<path d="M11 22a13 8 0 0 1 26 0z" fill="#7a5230"/>' +
+             '<path d="M24 14v-6" stroke="#7a5230" stroke-width="4" stroke-linecap="round"/>',
+  'maze:z8': '<path d="M8 24c6-9 14-12 22-8l10-8-3 12 3 12-10-8c-8 4-16 1-22-8z" fill="#4aa8e8" transform="scale(-1 1) translate(-48 0)"/>' +
+             '<circle cx="15" cy="22" r="2.5" fill="#fff"/><circle cx="15" cy="22" r="1.2" fill="#2a5a8a"/>',
+  'maze:z4': '<circle cx="22" cy="26" r="14" fill="#5a7ae0"/>' +
+             '<path d="M10 20c8-4 16-4 24 2M9 28c9-4 18-3 26 3M13 36c7-3 13-3 19 1" stroke="#8ba2f0" stroke-width="3" fill="none" stroke-linecap="round"/>' +
+             '<path d="M35 33c4 2 6 5 7 9" stroke="#5a7ae0" stroke-width="3.5" fill="none" stroke-linecap="round"/>',
+  'maze:z9': '<path d="M9 22L24 9l15 13v14a3 3 0 0 1-3 3H12a3 3 0 0 1-3-3z" fill="#ffb47a"/>' +
+             '<path d="M6 23L24 7l18 16" fill="none" stroke="#e06a1f" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>' +
+             '<rect x="19" y="26" width="10" height="13" rx="2" fill="#8a5f3a"/>',
+  'maze:z10': '<ellipse cx="24" cy="30" rx="18" ry="10" fill="#7fd0e8"/>' +
+              '<ellipse cx="18" cy="28" rx="6" ry="3" fill="#4fbf7a"/>' +
+              '<circle cx="30" cy="26" r="3" fill="#ff8fc4"/>' +
+              '<path d="M30 26l1.5-4" stroke="#4fbf7a" stroke-width="2" stroke-linecap="round"/>',
+  'maze:z11': '<path d="M24 6c8 0 14 10 14 20a14 14 0 0 1-28 0C10 16 16 6 24 6z" fill="#f2ead8" stroke="#d8ccb0" stroke-width="2"/>' +
+              '<circle cx="19" cy="20" r="2.5" fill="#bfe0c4"/><circle cx="29" cy="27" r="3" fill="#bfe0c4"/>' +
+              '<circle cx="22" cy="33" r="2" fill="#bfe0c4"/>',
+  'maze:z12': '<path d="M30 6a17 17 0 1 0 12 29A17 17 0 0 1 30 6z" fill="#ffd166"/>' +
+              '<circle cx="38" cy="12" r="2" fill="#ffe6a3"/><circle cx="43" cy="20" r="1.4" fill="#ffe6a3"/>',
+  'maze:z13': '<path d="M14 10h20l8 10-18 20L6 20z" fill="#5ad0e0"/>' +
+              '<path d="M14 10l10 10 10-10M6 20h36M24 20l0 18" fill="none" stroke="#2fa8b8" stroke-width="2.5" stroke-linejoin="round"/>',
+  'maze:z14': '<rect x="8" y="20" width="32" height="20" rx="3" fill="#ff6b6b"/>' +
+              '<rect x="6" y="13" width="36" height="8" rx="2" fill="#ff8a8a"/>' +
+              '<rect x="21" y="13" width="6" height="27" fill="#ffd166"/>' +
+              '<path d="M24 13c-6 0-9-6-5-8s6 3 5 8c1-5 3-10 7-8s1 8-7 8z" fill="#ffd166"/>',
+};
+
+/** 단계 칩 아이콘. 선 긋기는 선, 미로는 면 — 굵기는 아이콘마다 다르다 */
+export function lvlIcon(course, id, size = 32) {
+  const v = LVL_PATHS[course + ':' + id];
+  if (!v) return '';
+  if (course === 'maze') return solid(v, size);
+  const [inner, sw = 5] = Array.isArray(v) ? v : [v];
+  return `<svg viewBox="0 0 48 48" width="${size}" height="${size}" fill="none"` +
+         ` stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+}
+
+/* ── 스테이지 위 그림 ────────────────────────────────────────
+   따라 그리기·미로 스테이지에 이모지 대신 찍는 그림. 캔버스에 SVG 를
+   바로 못 그리므로 러너가 이미지로 구워(Image + data URI) 찍는다 —
+   그래서 여기 값은 **width/height 가 박힌 완성된 svg 문자열**이다
+   (사파리는 크기 없는 SVG 이미지를 그리지 않는다).
+
+   선 긋기·점 잇기의 캐릭터 쌍(🐝→🌻)은 여기 없다. 그건 UI 가 아니라
+   그 단계의 이야기라 이모지로 둔다 — 세어보기 칩과 같은 이유. */
+export const STAGE_ART = {
+  // 지금 여기서 시작 (한글·숫자·영어·이름)
+  pen:  solid('<g transform="translate(24,24)">' +
+              '<path d="M-12 14L14 -12l6 6L-6 20l-8 2z" fill="#f2b23c" stroke="#8b6a2a"' +
+              ' stroke-width="3" stroke-linejoin="round"/></g>', 128),
+  // 도착점에서 기다리는 별
+  star: solid('<path d="M24 4l6.2 12.5L44 18.5l-10 9.7 2.4 13.7L24 35.4 11.6 41.9' +
+              ' 14 28.2 4 18.5l13.8-2z" fill="#ffd166" stroke="#e0a93e"' +
+              ' stroke-width="3" stroke-linejoin="round"/>', 128),
+  // 미로를 달리는 주인공 (외눈 + 웃는 입 — 프로토타입 그대로)
+  runner: solid('<circle cx="24" cy="24" r="23" fill="#ff8a3d"/>' +
+                '<circle cx="24" cy="16.6" r="6.5" fill="#fff"/>' +
+                '<path d="M13 33.2c3.7 7.4 18.5 7.4 22 0" stroke="#fff" stroke-width="3.7"' +
+                ' fill="none" stroke-linecap="round"/>', 128)
+};

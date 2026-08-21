@@ -3,3 +3,6 @@ assets/voice-src/
 
 # 맥 파인더 찌꺼기
 .DS_Store
+
+# 디자인 캔버스가 뽑는 프로토타입 미리보기 (원본 .dc.html 만 커밋한다)
+design_handoff_home_redesign/미리보기-*.html

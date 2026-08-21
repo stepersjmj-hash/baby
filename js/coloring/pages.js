@@ -299,12 +299,22 @@ export const PAGES = [
   }
 ];
 
+/**
+ * 밑그림(1000×700)이 캔버스 어디에 얼마로 앉는지. 비율을 지켜 가운데다.
+ * **아이가 칠한 것도 이 상자를 기준으로 저장한다** — 화면을 돌려 종이
+ * 비율이 바뀌어도 그림과 칠이 같이 움직여야 찌그러지지 않는다.
+ */
+export const artBox = (W, H) => {
+  const s = Math.min(W / 1000, H / 700) * 0.94;
+  return { s, w: 1000 * s, h: 700 * s, ox: (W - 1000 * s) / 2, oy: (H - 700 * s) / 2 };
+};
+
 /** 밑그림을 캔버스에 비율 유지하며 그린다 */
 export function drawPage(page, ctx, W, H) {
   ctx.clearRect(0, 0, W, H);
-  const s = Math.min(W / 1000, H / 700) * 0.94;
+  const { s, ox, oy } = artBox(W, H);
   ctx.save();
-  ctx.translate((W - 1000 * s) / 2, (H - 700 * s) / 2);
+  ctx.translate(ox, oy);
   ctx.scale(s, s);
   ctx.strokeStyle = '#241f1a';
   ctx.fillStyle = '#241f1a';

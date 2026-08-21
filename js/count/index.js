@@ -16,7 +16,8 @@
    레이어 2장: cn-mark(배지·강조) / cn-board(물건·숫자 카드)
    ============================================================ */
 
-import { VIEW, AREA, CARDS, CARD_W, CARD_H, LEVELS, buildCount, COUNT_SAY, GAE } from './levels.js';
+import { AREA, CARDS, CARD_W, CARD_H, LEVELS, buildCount, COUNT_SAY, GAE } from './levels.js';
+import { fitPaper, setOrigin } from '../core/fit.js';
 import { sfx, say } from '../core/audio.js';
 import { STAR } from '../core/icons.js';
 
@@ -34,6 +35,8 @@ export function initCount({ toast, goHome }) {
 
   let done = new Set();
   let W = 0, H = 0, S = 1;
+  let OX = 0, OY = 0;                   // 내용을 종이 가운데로 옮기는 원점
+  const clear = (ctx) => ctx.clearRect(-OX, -OY, W, H);
   let li = 0, level = LEVELS[0];
   let quiz = null;
   let marked = [];                      // 탭한 순서의 물건 번호들
@@ -41,25 +44,29 @@ export function initCount({ toast, goHome }) {
   let party = null, raf = 0, advanceTimer = 0, dimTimer = 0;
 
   /* ── 레이아웃 ─────────────────────────────────────────── */
+
+  /* 물건 흩는 곳(AREA)과 숫자 카드 줄만 쓴다 — 그 상자를 종이에 꽉 채운다 */
+  const BOX = {
+    x: AREA.x - 14, y: AREA.y - 14,
+    w: AREA.w + 28,
+    h: (CARDS[0].y + CARD_H / 2 + 14) - (AREA.y - 14)
+  };
+
   function doLayout() {
-    const st = $('count-stage').getBoundingClientRect();
-    if (!st.width || !st.height) return;
-    const AR = VIEW.w / VIEW.h;
-    let w = st.width - 28, h = st.height - 28;
-    if (w / h > AR) w = h * AR; else h = w / AR;
-    w = Math.max(80, Math.floor(w)); h = Math.max(56, Math.floor(h));
-    paper.style.width = w + 'px';
-    paper.style.height = h + 'px';
-    const nW = Math.round(w * DPR), nH = Math.round(h * DPR);
-    if (nW === W && nH === H) return;
-    W = nW; H = nH; S = W / VIEW.w;
-    for (const cv of [cBoard, cMark]) { cv.width = W; cv.height = H; }
+    const fit = fitPaper($('count-stage'), paper, BOX, DPR);
+    if (!fit) return;
+    if (fit.W === W && fit.H === H) return;
+    W = fit.W; H = fit.H; S = fit.S; OX = fit.OX; OY = fit.OY;
+    for (const cv of [cBoard, cMark]) {
+      cv.width = W; cv.height = H;                      // 크기를 넣으면 변환이 초기화된다
+      setOrigin(cv.getContext('2d'), fit);
+    }
     redrawAll();
   }
 
   /* ── 그리기 ───────────────────────────────────────────── */
   function drawBoard() {
-    bctx.clearRect(0, 0, W, H);
+    clear(bctx);
     bctx.save();
     bctx.textAlign = 'center'; bctx.textBaseline = 'middle';
     bctx.font = `${quiz.size * S}px ${EMOJI_FONT}`;
@@ -89,7 +96,7 @@ export function initCount({ toast, goHome }) {
   }
 
   function drawMarks() {
-    mctx.clearRect(0, 0, W, H);
+    clear(mctx);
     marked.forEach((idx, k) => {                         // 센 순서대로 번호 배지
       const it = quiz.items[idx];
       const r = quiz.size * 0.52;
@@ -147,9 +154,10 @@ export function initCount({ toast, goHome }) {
   /* ── 탭 (click — iOS 소리 권한이 확실한 유일한 경로) ────── */
   paper.addEventListener('click', (e) => {
     if (!quiz || solved) return;
+    // 종이 → 캔버스 픽셀 → 옮겨 둔 원점을 빼고 1000×700 좌표로
     const r = paper.getBoundingClientRect();
-    const x = (e.clientX - r.left) / r.width * VIEW.w;
-    const y = (e.clientY - r.top) / r.height * VIEW.h;
+    const x = ((e.clientX - r.left) / r.width * W - OX) / S;
+    const y = ((e.clientY - r.top) / r.height * H - OY) / S;
 
     // 숫자 카드?
     for (let k = 0; k < CARDS.length; k++) {

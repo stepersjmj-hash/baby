@@ -320,7 +320,14 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
   transition:background .14s,border-color .14s;
 }
 .lvl .ico{font-size:26px;line-height:1}
+.lvl .ico.art{display:flex;align-items:center;justify-content:center}   /* SVG 아이콘 칩 */
+.lvl .ico.art svg{display:block}
 .lvl .lbl{font-size:10px;font-weight:800;opacity:.55}
+/* 대문자·소문자를 같이 보여 주는 칩 (영어 쓰기). 아래 글자가 이름표가
+   아니라 배울 내용이라, 작게 흐리게 두지 않고 좁은 화면에서도 남긴다 */
+.lvl.pair{gap:0}
+.lvl.pair .ico{font-size:23px}
+.lvl.pair .lbl{font-size:19px;opacity:.75;line-height:1.05}
 .lvl .star{position:absolute;top:-4px;right:-4px;font-size:15px}
 /* 이름 칩의 얼굴 사진 — 가로 썸네일(퍼즐)과 달리 정사각으로 자른다.
    사진이 붙은 칩은 이름 글자를 빼므로(trace/index.js) 그만큼 크게 쓴다. */
@@ -414,6 +421,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
   .tool{width:52px;min-width:52px}
   .lvl{width:56px;min-width:56px}
   .tool .lbl,.lvl .lbl{display:none}
+  .lvl.pair .lbl{display:block;font-size:17px}
   /* 칩이 56 으로 좁아지므로 얼굴도 같이 줄인다 (안 그러면 칩 밖으로 넘친다) */
   .lvl.has-face .thumb.face{width:48px;height:48px;border-radius:13px}
   .lvl-name{min-width:80px;font-size:17px}

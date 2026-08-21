@@ -7,12 +7,14 @@
 
    막다른 길로 새면 진행이 멈출 뿐 벌점은 없다. 되돌아 나오면 이어진다.
 
-   미로는 씨앗 난수로 만든다 — 같은 씨앗이면 언제 켜도 같은 미로다.
+   **미로는 코스에 들어갈 때마다 새로 판다** (trace/index.js 의 course.fresh).
+   같은 미로가 계속 나오면 금방 지루해지기 때문이다. 칸 수(난이도 순서)와
+   id·주인공은 그대로라 아이가 모은 별은 남는다.
    벽을 뚫고 질러가지 못하는 이유: 허용 오차(tol)를 칸 크기의 0.42 로
    두어 옆 통로(한 칸 = 벽 하나 너머)까지 닿지 않기 때문이다.
    ============================================================ */
 
-import { poly } from '../core/trace.js';
+import { poly, buildLevel, createTracer } from '../core/trace.js';
 import { rng } from '../core/pen.js';
 
 /** 재귀 백트래킹으로 방 cols×rows 짜리 미로를 판다 → (2c+1)×(2r+1) 격자 */
@@ -81,20 +83,46 @@ function makeMaze({ id, name, ico, cols, rows, seed, from, to }) {
 
 /* 방 수(cols×rows)가 커질수록 어렵다. 쉬운 것부터 늘어놓는다.
    여정마다 주인공과 목적지가 달라 "무엇을 어디로" 를 그림으로 알린다.
-   기존 z1~z4 는 id 를 지켜 아이가 모은 별이 그대로 남는다. */
-export const MAZES = [
-  { id: 'z1',  name: '치즈',    ico: '🧀', cols: 3, rows: 2, seed: 11, from: '🐭', to: '🧀' },
-  { id: 'z5',  name: '뼈다귀',  ico: '🦴', cols: 4, rows: 2, seed: 71, from: '🐶', to: '🦴' },
-  { id: 'z2',  name: '당근',    ico: '🥕', cols: 4, rows: 3, seed: 27, from: '🐰', to: '🥕' },
-  { id: 'z6',  name: '꽃길',    ico: '🌸', cols: 5, rows: 3, seed: 83, from: '🐝', to: '🌸' },
-  { id: 'z7',  name: '사탕',    ico: '🍭', cols: 6, rows: 3, seed: 95, from: '🐜', to: '🍭' },
-  { id: 'z3',  name: '도토리',  ico: '🌰', cols: 5, rows: 4, seed: 42, from: '🐿️', to: '🌰' },
-  { id: 'z8',  name: '물고기',  ico: '🐟', cols: 7, rows: 3, seed: 19, from: '🐧', to: '🐟' },
-  { id: 'z4',  name: '털실',    ico: '🧶', cols: 6, rows: 4, seed: 58, from: '🐱', to: '🧶' },
-  { id: 'z9',  name: '집 찾기', ico: '🏠', cols: 7, rows: 4, seed: 33, from: '🚗', to: '🏠' },
-  { id: 'z10', name: '연못',    ico: '🌺', cols: 5, rows: 5, seed: 47, from: '🐸', to: '🌺' },
-  { id: 'z11', name: '공룡 알', ico: '🥚', cols: 8, rows: 4, seed: 66, from: '🦖', to: '🥚' },
-  { id: 'z12', name: '달나라',  ico: '🌕', cols: 6, rows: 5, seed: 29, from: '🚀', to: '🌕' },
-  { id: 'z13', name: '보물',    ico: '💎', cols: 7, rows: 5, seed: 52, from: '⛵', to: '💎' },
-  { id: 'z14', name: '선물',    ico: '🎁', cols: 8, rows: 5, seed: 88, from: '🎅', to: '🎁' }
-].map(makeMaze);
+   기존 z1~z4 는 id 를 지켜 아이가 모은 별이 그대로 남는다.
+   씨앗은 여기 없다 — 열 때마다 새로 뽑는다(newMazes). */
+const PLAN = [
+  { id: 'z1',  name: '치즈',    ico: '🧀', cols: 3, rows: 2, from: '🐭', to: '🧀' },
+  { id: 'z5',  name: '뼈다귀',  ico: '🦴', cols: 4, rows: 2, from: '🐶', to: '🦴' },
+  { id: 'z2',  name: '당근',    ico: '🥕', cols: 4, rows: 3, from: '🐰', to: '🥕' },
+  { id: 'z6',  name: '꽃길',    ico: '🌸', cols: 5, rows: 3, from: '🐝', to: '🌸' },
+  { id: 'z7',  name: '사탕',    ico: '🍭', cols: 6, rows: 3, from: '🐜', to: '🍭' },
+  { id: 'z3',  name: '도토리',  ico: '🌰', cols: 5, rows: 4, from: '🐿️', to: '🌰' },
+  { id: 'z8',  name: '물고기',  ico: '🐟', cols: 7, rows: 3, from: '🐧', to: '🐟' },
+  { id: 'z4',  name: '털실',    ico: '🧶', cols: 6, rows: 4, from: '🐱', to: '🧶' },
+  { id: 'z9',  name: '집 찾기', ico: '🏠', cols: 7, rows: 4, from: '🚗', to: '🏠' },
+  { id: 'z10', name: '연못',    ico: '🌺', cols: 5, rows: 5, from: '🐸', to: '🌺' },
+  { id: 'z11', name: '공룡 알', ico: '🥚', cols: 8, rows: 4, from: '🦖', to: '🥚' },
+  { id: 'z12', name: '달나라',  ico: '🌕', cols: 6, rows: 5, from: '🚀', to: '🌕' },
+  { id: 'z13', name: '보물',    ico: '💎', cols: 7, rows: 5, from: '⛵', to: '💎' },
+  { id: 'z14', name: '선물',    ico: '🎁', cols: 8, rows: 5, from: '🎅', to: '🎁' }
+];
+
+/* 가끔 해답이 시작에서 도착까지 곧게 이어진 시시한 미로가 나온다.
+   (해답이 직선을 자주 넘나들면 자로 긋듯 쭉 그어도 완주가 된다 —
+   굽은 정도만 재서는 안 잡히고, 판정 엔진에 직접 그어 봐야 안다.)
+   그런 판은 버리고 다시 판다. 560판에 한 판꼴로 나온다. */
+function cheatable(level) {
+  const p = buildLevel(level).paths[0];
+  const a = p[0], z = p[p.length - 1];
+  const tr = createTracer([p], { tol: level.tol });
+  for (let k = 0; k <= 400; k++)
+    tr.feed(a.x + (z.x - a.x) * k / 400, a.y + (z.y - a.y) * k / 400);
+  return tr.finished;
+}
+
+/** 코스에 들어갈 때마다 부른다 — 같은 칸 수, 새 미로 */
+export const newMazes = () => PLAN.map(p => {
+  let m;
+  for (let i = 0; i < 12; i++) {
+    m = makeMaze({ ...p, seed: (Math.random() * 1e9) | 0 });
+    if (!cheatable(m)) break;
+  }
+  return m;
+});
+
+export const MAZES = newMazes();

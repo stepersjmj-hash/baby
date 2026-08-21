@@ -52,27 +52,38 @@
     log.push(`길 밖:            ${tr.overall() === 0 ? 'OK' : `FAIL (${tr.overall()})`}`);
   }
 
-  // 3) 시작점에서 끝점으로 곧장 그어서는 완성되지 않아야 한다.
-  //    단, 원래 직선인 단계(가로줄·ㅡ·ㅣ 등)는 그게 정답이므로 제외한다.
+  // 3) 시작점에서 끝점으로 곧장 그어서는 그 획이 통과되지 않아야 한다.
+  //    획 하나하나를 다 본다 — 앞 획은 정직하게 따라간 뒤 그 획만 질러간다.
+  //    (한 획짜리 단계만 보던 때는 글자 대부분이 검사에서 빠졌다.
+  //     영어가 대문자+소문자 한 쌍이 되면서 26단계가 통째로 빠져 드러났다.)
+  //    원래 직선인 획(가로줄·ㅡ·ㅣ 등)은 그게 정답이므로 제외한다.
   const shortcut = [];
   let curved = 0;
-  for (const [name, [levels, tol]] of Object.entries(COURSES)) {
+  for (const [name, [levels, tol0]] of Object.entries(COURSES)) {
     for (const L of levels) {
-      if (L.strokes.length > 1) continue;               // 한 획짜리만 시험한다
-      const pts = buildLevel(L).paths[0];
-      const a = pts[0], z = pts[pts.length - 1];
-      const span = Math.hypot(z.x - a.x, z.y - a.y);
-      if (span < 200) continue;                         // 시작=끝 인 닫힌 도형
-      // 경로가 그 직선에서 얼마나 벗어나는지 — 허용 오차 안이면 애초에 직선이다
-      const off = Math.max(...pts.map(q =>
-        Math.abs((z.x - a.x) * (a.y - q.y) - (a.x - q.x) * (z.y - a.y)) / span));
-      if (off < (L.tol ?? tol)) continue;
-      curved++;
-      const r = run(L, tol, { only: t => ({ x: a.x + (z.x - a.x) * t, y: a.y + (z.y - a.y) * t }) });
-      if (r.done) shortcut.push(`${name}/${L.name}`);
+      const tol = L.tol ?? tol0;
+      const b = buildLevel(L);
+      for (let k = 0; k < b.paths.length; k++) {
+        const pts = b.paths[k];
+        const a = pts[0], z = pts[pts.length - 1];
+        const span = Math.hypot(z.x - a.x, z.y - a.y);
+        if (span < 200) continue;                       // 시작=끝 인 닫힌 도형
+        // 경로가 그 직선에서 얼마나 벗어나는지 — 허용 오차 안이면 애초에 직선이다
+        const off = Math.max(...pts.map(q =>
+          Math.abs((z.x - a.x) * (a.y - q.y) - (a.x - q.x) * (z.y - a.y)) / span));
+        if (off < tol) continue;
+        curved++;
+        const tr = createTracer(b.paths, { tol });
+        for (let i = 0; i < k; i++)                     // 앞 획은 정직하게
+          for (let s = 0; s <= 300; s++) { const q = L.strokes[i](s / 300); tr.feed(q.x, q.y); }
+        const before = tr.stroke;
+        for (let s = 0; s <= 300; s++)
+          tr.feed(a.x + (z.x - a.x) * s / 300, a.y + (z.y - a.y) * s / 300);
+        if (tr.stroke > before) shortcut.push(`${name}/${L.name}#${k + 1}`);
+      }
     }
   }
-  log.push(`질러가기 방지:     ${shortcut.length ? `FAIL → ${shortcut.join(' ')}` : `OK (굽은 단계 ${curved}개)`}`);
+  log.push(`질러가기 방지:     ${shortcut.length ? `FAIL → ${shortcut.join(' ')}` : `OK (굽은 획 ${curved}개)`}`);
 
   // 4) 획순 — 마지막 획을 먼저 그어서는 완성되지 않아야 한다.
   //    ㄷ·ㅅ·ㅌ·5 처럼 마지막 획의 시작점이 1획과 같은 글자는 그 점 하나만

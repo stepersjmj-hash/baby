@@ -25,8 +25,9 @@
    ============================================================ */
 
 import { attachPen } from '../core/pen.js';
+import { fitPaper, setOrigin } from '../core/fit.js';
 import { STAR } from '../core/icons.js';
-import { VIEW, PIC, SNAP, buildPuzzle, tracePiece } from './cut.js';
+import { VIEW, PIC, SCAT, SNAP, buildPuzzle, tracePiece } from './cut.js';
 import { PICS, drawScene } from './pics.js';
 import { sfx, voice } from '../core/audio.js';
 import { photos } from '../core/store.js';
@@ -46,6 +47,8 @@ export function initPuzzle({ toast, goHome }) {
   let done = new Set();
   let LV = [...PICS];                   // 기본 그림 + 내 사진 단계들
   let W = 0, H = 0, S = 1;
+  let OX = 0, OY = 0;                   // 내용을 종이 가운데로 옮기는 원점
+  const clear = (ctx) => ctx.clearRect(-OX, -OY, W, H);
   let li = 0, level = LV[0];
   let pieces = [], placed = new Set();
   let order = [];                       // 그리는 순서 = 아래→위. 집으면 맨 위로
@@ -58,19 +61,27 @@ export function initPuzzle({ toast, goHome }) {
   const album = new Map();
 
   /* ── 레이아웃 ─────────────────────────────────────────── */
+
+  /* 판(PIC)과 조각이 놓이는 자리만 쓴다 — 그 상자를 종이에 꽉 채운다.
+     좌표계(1000×700)째로 맞추면 위아래가 남아서 조각이 작아진다.
+     조각은 SCAT 안에 "중심"이 놓이므로 큰 조각은 오른쪽·아래로 반쯤
+     삐져나온다 — 흩는 자리 대신 화면 끝(VIEW-6)까지 상자에 넣어야
+     조각이 잘리지 않는다 (cut.js 의 흩기 규칙과 짝을 이룬다). */
+  const BOX = {
+    x: PIC.x - 12, y: Math.min(PIC.y - 12, SCAT.y),
+    w: (VIEW.w - 6) - (PIC.x - 12),
+    h: (VIEW.h - 6) - Math.min(PIC.y - 12, SCAT.y)
+  };
+
   function doLayout() {
-    const st = $('puzzle-stage').getBoundingClientRect();
-    if (!st.width || !st.height) return;
-    const AR = VIEW.w / VIEW.h;
-    let w = st.width - 28, h = st.height - 28;
-    if (w / h > AR) w = h * AR; else h = w / AR;
-    w = Math.max(80, Math.floor(w)); h = Math.max(56, Math.floor(h));
-    paper.style.width = w + 'px';
-    paper.style.height = h + 'px';
-    const nW = Math.round(w * DPR), nH = Math.round(h * DPR);
-    if (nW === W && nH === H) return;
-    W = nW; H = nH; S = W / VIEW.w;
-    for (const cv of [cBoard, cLoose, cDrag]) { cv.width = W; cv.height = H; }
+    const fit = fitPaper($('puzzle-stage'), paper, BOX, DPR);
+    if (!fit) return;
+    if (fit.W === W && fit.H === H) return;
+    W = fit.W; H = fit.H; S = fit.S; OX = fit.OX; OY = fit.OY;
+    for (const cv of [cBoard, cLoose, cDrag]) {
+      cv.width = W; cv.height = H;                      // 크기를 넣으면 변환이 초기화된다
+      setOrigin(cv.getContext('2d'), fit);
+    }
     bake();
     redrawAll();
   }
@@ -128,7 +139,7 @@ export function initPuzzle({ toast, goHome }) {
   }
 
   function drawBoard() {
-    bctx.clearRect(0, 0, W, H);
+    clear(bctx);
     bctx.save();
     bctx.beginPath();
     bctx.roundRect((PIC.x - 10) * S, (PIC.y - 10) * S, (PIC.w + 20) * S, (PIC.h + 20) * S, 16 * S);
@@ -158,7 +169,7 @@ export function initPuzzle({ toast, goHome }) {
   }
 
   function drawLoose() {
-    lctx.clearRect(0, 0, W, H);
+    clear(lctx);
     for (const p of order) {
       if (placed.has(p.id) || p === held) continue;
       drawPieceAt(lctx, p, p.pos.x, p.pos.y);
@@ -166,7 +177,7 @@ export function initPuzzle({ toast, goHome }) {
   }
 
   function drawDrag() {
-    dctx.clearRect(0, 0, W, H);
+    clear(dctx);
     if (held) drawPieceAt(dctx, held, held.pos.x, held.pos.y);
     if (party) {
       dctx.save();
@@ -243,7 +254,7 @@ export function initPuzzle({ toast, goHome }) {
     getSize: () => [W, H],
     onStart: (pt) => {
       if (!pieces.length || placed.size >= pieces.length) return;
-      const x = pt.x / S, y = pt.y / S;
+      const x = (pt.x - OX) / S, y = (pt.y - OY) / S;
       const p = pieceAt(x, y);
       if (!p) return;
       held = p;
@@ -257,8 +268,8 @@ export function initPuzzle({ toast, goHome }) {
     onMove: (pts) => {
       if (!held) return;
       const pt = pts[pts.length - 1];
-      held.pos.x = pt.x / S - grab.x;
-      held.pos.y = pt.y / S - grab.y;
+      held.pos.x = (pt.x - OX) / S - grab.x;
+      held.pos.y = (pt.y - OY) / S - grab.y;
       vox?.move(0.45, pt.p ?? 0.6);
       drawDrag();
     },

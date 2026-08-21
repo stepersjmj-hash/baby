@@ -18,9 +18,10 @@
    같은 그림이 그대로 재생된다.
    ============================================================ */
 
+import { fitPaper } from '../core/fit.js';
 import { attachPen, rng } from '../core/pen.js';
 import { BRUSHES, TOOL_ORDER, SPECIAL, STICKERS, stampText } from './brushes.js';
-import { PAGES, drawPage } from './pages.js';
+import { PAGES, drawPage, artBox } from './pages.js';
 import { floodFill, alphaMask, hexToRgba } from './fill.js';
 import { sfx, voice } from '../core/audio.js';
 import { works, drafts, linework } from '../core/store.js';
@@ -28,6 +29,7 @@ import { photoToLineArt } from './photopage.js';
 import { toolIcon } from '../core/icons.js';
 
 const DPR = Math.min(window.devicePixelRatio || 1, 2);
+const PAGE = { x: 0, y: 0, w: 1000, h: 700 };   // 밑그림 좌표계 (종이는 이보다 넓을 수 있다)
 const MAX_RECS = 24;
 const SIZES = [0.010, 0.022, 0.042];      // 캔버스 가로폭 대비 붓 굵기
 const SIZE_DOT = [12, 22, 34];            // 굵기 버튼 안 동그라미 지름(px)
@@ -126,6 +128,17 @@ export function initColoring({ toast, goHome }) {
   let needDraft = false;
 
   /** 밑그림 다시 그리기 + 물감통 벽 재계산 + 화면 재생 */
+  /* 획을 어디에 저장하나 — 캔버스가 아니라 **밑그림 상자** 기준이다.
+     화면을 돌리면 종이 비율이 확 바뀌는데(가로 2.05 ↔ 세로 0.76), 캔버스
+     기준으로 저장하면 그 비율대로 그림이 늘어나고 찌그러진다. 밑그림
+     기준이면 칠이 그림에 붙어 다니고, 종이 밖으로 나간 부분만 잘린다.
+     u,v 는 둘 다 **밑그림 가로폭**으로 나눈 값이라 비율이 보존된다. */
+  let ART = artBox(1000, 700);
+  const aX = (u) => ART.ox + u * ART.w;
+  const aY = (v) => ART.oy + v * ART.w;
+  const uOf = (px) => (px - ART.ox) / ART.w;
+  const vOf = (py) => (py - ART.oy) / ART.w;
+
   function refreshPage() {
     if (!W || !H) return;
     drawPage(page, lctx, W, H);
@@ -134,29 +147,33 @@ export function initColoring({ toast, goHome }) {
   }
 
   function layout() {
-    const st = $('stage').getBoundingClientRect();
-    if (!st.width || !st.height) return;              // 아직 화면에 안 붙었다
-    const AR = 1000 / 700;
-    let w = st.width - 28, h = st.height - 28;
-    if (w / h > AR) w = h * AR; else h = w / AR;
-    w = Math.max(80, Math.floor(w)); h = Math.max(56, Math.floor(h));
-    paper.style.width = w + 'px';
-    paper.style.height = h + 'px';
-
-    const nW = Math.round(w * DPR), nH = Math.round(h * DPR);
+    // 색칠은 종이 전체가 그리는 자리다. 밑그림은 drawPage() 가 1000×700
+    // 비율을 지켜 가운데에 앉히므로, 종이가 넓어지면 그림은 그대로고
+    // 마음대로 그릴 여백만 넓어진다 — 원점은 옮기지 않는다.
+    const fit = fitPaper($('stage'), paper, PAGE, DPR);
+    if (!fit) return;                                 // 아직 화면에 안 붙었다
+    const { W: nW, H: nH } = fit;
     if (nW === W && nH === H) return;
 
-    // 화면 회전 등으로 크기가 바뀌면 baseline 을 새 크기로 늘려 옮긴다.
-    // 획(recs)은 0~1 정규화라 그대로 다시 재생하면 된다.
+    // 화면을 돌리면 종이 비율이 크게 바뀐다(가로 2.05 ↔ 세로 0.76).
+    // 획(recs)은 밑그림 기준이라 그대로 재생하면 되고, 구워 둔 baseline 은
+    // **밑그림 상자끼리** 맞춰 옮긴다 — 캔버스에 늘려 붙이면 찌그러진다.
+    // 비율을 지키므로 종이 밖으로 나간 자리는 잘린다.
     let old = null;
+    const oldArt = ART;
     if (W && H) {
       old = document.createElement('canvas');
       old.width = W; old.height = H;
       old.getContext('2d').drawImage(bcan, 0, 0);
     }
     W = nW; H = nH;
+    ART = artBox(W, H);
     for (const cv of [cPaint, cStroke, cLines, bcan]) { cv.width = W; cv.height = H; }
-    if (old) bctx.drawImage(old, 0, 0, W, H);
+    if (old) {
+      const k = ART.s / oldArt.s;
+      bctx.drawImage(old, ART.ox - oldArt.ox * k, ART.oy - oldArt.oy * k,
+                     old.width * k, old.height * k);
+    }
 
     refreshPage();
     if (needDraft) { needDraft = false; loadDraft(); }
@@ -165,16 +182,16 @@ export function initColoring({ toast, goHome }) {
   /* ── 기록 재생 ────────────────────────────────────────── */
   function renderRec(rec, dctx) {
     if (rec.k === 'f') {
-      floodFill(dctx, mask, W, H, rec.x * W, rec.y * H, hexToRgba(rec.c));
+      floodFill(dctx, mask, W, H, aX(rec.x), aY(rec.y), hexToRgba(rec.c));
       return;
     }
     if (rec.k === 't') {
-      stampText(dctx, rec.e, rec.x * W, rec.y * H, rec.z * W, rec.r);
+      stampText(dctx, rec.e, aX(rec.x), aY(rec.y), rec.z * ART.w, rec.r);
       return;
     }
     const b = BRUSHES[rec.b];
     if (!b) return;
-    const st = { color: rec.c, seed: rec.seed, rnd: rng(rec.seed), base: rec.z * W };
+    const st = { color: rec.c, seed: rec.seed, rnd: rng(rec.seed), base: rec.z * ART.w };
     b.init?.(st);
     const target = b.direct ? dctx : sctx;
     if (!b.direct) sctx.clearRect(0, 0, W, H);
@@ -183,12 +200,12 @@ export function initColoring({ toast, goHome }) {
     // 첫 점이 "점 하나"로 찍히지 않고 앞 획과 이어진 선으로 그려진다.
     let prev = null;
     if (rec.a) {
-      prev = { x: rec.a[0] * W, y: rec.a[1] * H, p: rec.pts[2] ?? 0.5 };
+      prev = { x: aX(rec.a[0]), y: aY(rec.a[1]), p: rec.pts[2] ?? 0.5 };
       prev.w = widthFor(b, st.base, prev.p);
     }
     const n = rec.pts.length / 3;
     for (let i = 0; i < n; i++) {
-      const q = { x: rec.pts[i * 3] * W, y: rec.pts[i * 3 + 1] * H, p: rec.pts[i * 3 + 2] };
+      const q = { x: aX(rec.pts[i * 3]), y: aY(rec.pts[i * 3 + 1]), p: rec.pts[i * 3 + 2] };
       q.w = widthFor(b, st.base, q.p);
       drawSeg(b, target, prev, q, st);
       prev = q;
@@ -240,7 +257,7 @@ export function initColoring({ toast, goHome }) {
     if (!L) return null;
     if (performance.now() - L.at > RESUME_MS) return null;
     if (L.tool !== tool || L.color !== color || L.sizeIdx !== sizeIdx) return null;
-    if (Math.hypot(pt.x - L.x, pt.y - L.y) > RESUME_DIST * W) return null;
+    if (Math.hypot(pt.x - L.x, pt.y - L.y) > RESUME_DIST * ART.w) return null;
     return { x: L.x, y: L.y, p: L.p };
   }
 
@@ -255,12 +272,12 @@ export function initColoring({ toast, goHome }) {
     const from = resumeFrom(pt);
     const rec = { k: 's', b: tool, c: color, z: SIZES[sizeIdx], seed, pts: [] };
     if (from) {
-      rec.a = [from.x / W, from.y / H];   // 재생용 출발점
+      rec.a = [uOf(from.x), vOf(from.y)];  // 재생용 출발점
       rec.cont = 1;                       // 되돌리기는 이어진 조각을 묶어서 취소한다
     }
     cur = {
       b, rec,
-      st:  { color, seed, rnd: rng(seed), base: SIZES[sizeIdx] * W },
+      st:  { color, seed, rnd: rng(seed), base: SIZES[sizeIdx] * ART.w },
       prev: from, sm: from ? { x: from.x, y: from.y } : null
     };
     b.init?.(cur.st);
@@ -288,7 +305,7 @@ export function initColoring({ toast, goHome }) {
 
     q.w = widthFor(c.b, c.st.base, q.p);
     drawSeg(c.b, c.b.direct ? pctx : sctx, c.prev, q, c.st);
-    c.rec.pts.push(q.x / W, q.y / H, q.p);
+    c.rec.pts.push(uOf(q.x), vOf(q.y), q.p);
     c.prev = q;
   }
 
@@ -318,14 +335,14 @@ export function initColoring({ toast, goHome }) {
   function doFill(pt) {
     if (!mask) return;
     if (floodFill(pctx, mask, W, H, pt.x, pt.y, hexToRgba(color))) {
-      pushRec({ k: 'f', c: color, x: pt.x / W, y: pt.y / H });
+      pushRec({ k: 'f', c: color, x: uOf(pt.x), y: vOf(pt.y) });
       sfx.fill();
     }
   }
 
   function doSticker(pt) {
     const rec = {
-      k: 't', e: sticker, x: pt.x / W, y: pt.y / H,
+      k: 't', e: sticker, x: uOf(pt.x), y: vOf(pt.y),
       z: SIZES[sizeIdx] * 3.6, r: (Math.random() - 0.5) * 0.5
     };
     renderRec(rec, pctx);
@@ -402,8 +419,14 @@ export function initColoring({ toast, goHome }) {
       const d = await drafts.get(page.id);
       if (!d?.blob) return;
       const img = await createImageBitmap(d.blob);
+      // 저장할 때의 밑그림 상자는 이미지 크기만으로 되계산된다 (artBox 는
+      // 캔버스 크기의 함수라 따로 기록해 둘 필요가 없다). 그때와 지금의
+      // 상자를 맞춰 붙여야 세로로 저장한 그림이 가로에서 안 찌그러진다.
+      const a0 = artBox(img.width, img.height);
+      const k = ART.s / a0.s;
       bctx.clearRect(0, 0, W, H);
-      bctx.drawImage(img, 0, 0, W, H);
+      bctx.drawImage(img, ART.ox - a0.ox * k, ART.oy - a0.oy * k,
+                     img.width * k, img.height * k);
       img.close?.();
       recs = []; redo = [];
       replay();
