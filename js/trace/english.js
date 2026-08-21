@@ -25,7 +25,7 @@ const PI = Math.PI;
 const TOP = 145, XT = 347, BASE = 565, DESC = 695;
 
 /* ── 대문자 ────────────────────────────────────────────── */
-const UPPER = {
+export const UPPER_STROKES = {
   A: [poly([[500, 145], [300, 565]]),
       poly([[500, 145], [700, 565]]),
       poly([[385, 415], [615, 415]])],
@@ -91,10 +91,10 @@ const small = (fn) => (t) => {
   const q = fn(t);
   return { x: 500 + (q.x - 500) * XK, y: BASE - (BASE - q.y) * XK };
 };
-const smallOf = (ch) => UPPER[ch].map(small);
+const smallOf = (ch) => UPPER_STROKES[ch].map(small);
 
 /* ── 소문자 ────────────────────────────────────────────── */
-const LOWER = {
+export const LOWER_STROKES = {
   a: [poly(arc(465, 456, 100, 109, -PI / 2, -PI * 2.5, 32)),   // 동그라미는 반시계
       poly([[565, XT], [565, BASE]])],
   b: [poly([[420, TOP], [420, BASE]]),
@@ -128,12 +128,12 @@ const LOWER = {
   p: [poly([[420, XT], [420, DESC]]),
       poly(arc(420, 456, 115, 109, -PI / 2, PI / 2, 22))],
   q: [poly(arc(455, 456, 100, 109, -PI / 2, -PI * 2.5, 32)),
-      poly([[555, XT], [555, 655], [615, 690]])],
+      poly([[555, XT], [555, DESC]])],                 // 규칙: 곧은 세로 (꼬리 없음)
   r: [poly([[430, XT], [430, BASE]]),
       poly(arc(512, 437, 82, 90, PI, PI * 1.72, 16))],
   s: smallOf('S'),
-  // 아래에서 오른쪽으로 살짝 감아 올린 뒤 가로줄
-  t: [poly([[480, 180], [480, 505], ...arc(540, 505, 60, 55, PI, PI / 2, 10)]),
+  // 규칙: ① 긴 세로 → ② 가로 (아래 감아올림 없는 인쇄체)
+  t: [poly([[480, 180], [480, BASE]]),
       poly([[390, XT], [570, XT]])],
   u: smallOf('U'),
   v: smallOf('V'),
@@ -153,13 +153,13 @@ const at = (fn, cx) => (t) => {
   return { x: cx + (q.x - 500), y: q.y };
 };
 
-export const ENGLISH = Object.keys(UPPER).map((ch) => ({
+export const ENGLISH = Object.keys(UPPER_STROKES).map((ch) => ({
   id: ch,
   name: ch,
   ico: ch,
   lbl: ch.toLowerCase(),                    // 칩에 대문자 아래로 같이 보여 준다
   // S 는 제 몸에 되감기는 글자라 예전부터 오차를 조여 뒀다 (나머지는 코스 기본 40)
   ...(ch === 'S' ? { tol: 36 } : null),
-  strokes: [...UPPER[ch].map(f => at(f, LX)),
-            ...LOWER[ch.toLowerCase()].map(f => at(f, RX))]
+  strokes: [...UPPER_STROKES[ch].map(f => at(f, LX)),
+            ...LOWER_STROKES[ch.toLowerCase()].map(f => at(f, RX))]
 }));

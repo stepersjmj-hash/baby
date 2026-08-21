@@ -66,6 +66,8 @@ tools/selftest-trace.js   따라 그리기류 7코스 자가 점검 (진행 기�
 tools/selftest-puzzle.js  조각 퍼즐 자가 점검 (위와 같음)
 tools/selftest-spot.js    다른 그림 찾기 자가 점검 (위와 같음)
 tools/selftest-count.js   세어보기 자가 점검 (위와 같음)
+tools/check-strokeorder.mjs  획순 대조 — 그리는 경로에서 방향을 되읽어
+                          docs/stroke_order.json 과 맞춰 본다 (node 로 실행)
 tools/pen-log.html        펜 입력 진단 — 앱 로직 없이 받은 좌표만 그대로 잇는다
 tools/ios-check.html      소리 종합 점검 — 아이패드에서 열면 모듈·팩·상태를 자동 검사,
                           버튼으로 효과음/클립/TTS/일반오디오/우회로를 각각 시험 + 출력 미터
@@ -543,6 +545,8 @@ NUMBERS.forEach((L,i) => { const ox=(i%5)*190, oy=Math.floor(i/5)*190, s=0.166;
 관행이 갈리는 글자에서는 **획을 되짚어 올라가지 않는 쪽**을 골랐다(소문자 h·m·n·r, 대문자 B·M·R…).
 판정 엔진이 되짚기와 질러가기를 구분하지 못하고, 아이 손으로도 어려운 동작이라서다.
 다르게 가르치고 싶으면 해당 파일의 `strokes` 순서만 바꾸면 된다.
+**글자를 추가하거나 좌표를 손봤으면 `node tools/check-strokeorder.mjs`** 로
+규칙과 맞는지 대조할 것 — 경로에서 방향 코드를 되읽어 비교한다.
 
 ## 함정 모음
 
