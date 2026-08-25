@@ -6,7 +6,16 @@
   const q = '?t=' + Date.now();
   const { SPOTS, buildSpot, PANEL } = await import('/js/spot/scenes.js' + q);
   const { createSpot } = await import('/js/spot/judge.js' + q);
+  const { BOX } = await import('/js/spot/index.js');       // 화면이 쓰는 상자를 그대로.
+  // ★ 여기만 `?t=` 를 안 붙인다 — 앱이 이미 띄운 그 모듈을 그대로 써야 한다.
+  //   새로 읽으면 audio.js 까지 다시 태어나 창 리스너가 한 벌 더 붙는다.
   const log = [];
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  const inkOf = (cv) => {
+    const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+    let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 8) n++;
+    return n;
+  };
   const HARD = { 1: '하', 2: '중', 3: '상' };
   const want = { 1: 2, 2: 3, 3: 4 };
 
@@ -97,9 +106,62 @@
   const strip = document.getElementById('spot-strip');
   const cv = document.getElementById('s-board');
   const on = document.getElementById('screen-spot')?.classList.contains('is-active');
+  /* 위 검사들이 메인 스레드를 오래 잡고 있으면 ResizeObserver 가 밀려서
+     캔버스가 아직 기본 크기(300×150)일 수 있다 — 잡힐 때까지 기다린다. */
+  for (let i = 0; on && i < 60 && cv.width < 400; i++) await sleep(50);
   log.push(`화면: 칩 ${strip?.children.length ?? 0}개 · 캔버스 ${cv?.width}×${cv?.height} ` +
            (on ? ((strip?.children.length === SPOTS.length && cv?.width > 0) ? 'OK' : 'FAIL')
                : '(다른 그림 찾기 화면을 열고 다시 돌릴 것)'));
+
+  /* 6) 화면 좌표 → 판정 좌표. **실제로 동그라미를 쳐 본다.**
+        판정 엔진만 시험하면 여기가 빈다 — 원점을 두 번 빼는 바람에 잉크는
+        손끝을 따라가는데 판정만 어긋나 "엉뚱한 곳이 체크되던" 버그가 이 자리에서
+        났다. 다른 곳 하나만 짚으므로(하 난이도는 2개) 별은 안 붙는다 = 진행
+        기록은 그대로다. 짚은 표시는 그 단계를 다시 열어 지운다. */
+  if (on && cv?.width) {
+    const paper = document.getElementById('spot-paper');
+    const mark = document.getElementById('s-mark');
+    const cur = strip.querySelector('.lvl.is-on')?.dataset.lvl;
+    const lv = SPOTS.find(L => L.id === cur);
+    const t = cv.getContext('2d').getTransform();
+
+    // 화면이 쓰는 상자로 배율을 다시 구해 원점과 대조한다
+    const S = Math.min(cv.width / BOX.w, cv.height / BOX.h);
+    const OX = Math.round(cv.width / 2 - (BOX.x + BOX.w / 2) * S);
+    const OY = Math.round(cv.height / 2 - (BOX.y + BOX.h / 2) * S);
+    const same = Math.abs(t.e - OX) < 2 && Math.abs(t.f - OY) < 2;
+
+    let hit = '건너뜀(단계를 못 찾음)';
+    if (lv && same) {
+      const d = buildSpot(lv).diffs[0];
+      const r = paper.getBoundingClientRect();
+      const view = { x: PANEL.lx + d.x, y: PANEL.ty + d.y };
+      const cl = { x: r.left + (view.x * S + OX) * (r.width / cv.width),
+                   y: r.top + (view.y * S + OY) * (r.height / cv.height) };
+      const before = inkOf(mark);
+      // pen.js 규칙: pointerdown 은 요소, move/up 은 window 가 받는다
+      const send = (ty, x, y) => {
+        const ev = new PointerEvent(ty, { pointerId: 99, pointerType: 'pen', isPrimary: true,
+          clientX: x, clientY: y, pressure: .6, width: 2, height: 2,
+          bubbles: true, cancelable: true, buttons: ty === 'pointerup' ? 0 : 1 });
+        (ty === 'pointerdown' ? paper : window).dispatchEvent(ev);
+      };
+      const rad = 34;
+      send('pointerdown', cl.x + rad, cl.y);
+      for (let k = 1; k <= 30; k++) {
+        const a = k / 30 * Math.PI * 2;
+        send('pointermove', cl.x + Math.cos(a) * rad, cl.y + Math.sin(a) * rad);
+      }
+      send('pointerup', cl.x + rad, cl.y);
+      await sleep(120);
+      hit = inkOf(mark) > before ? 'OK' : 'FAIL (동그라미를 쳤는데 인정 안 됨)';
+      strip.querySelector('.lvl.is-on')?.click();       // 짚은 표시를 지운다
+      await sleep(80);
+    } else if (!same) {
+      hit = `FAIL (원점이 어긋남: 화면 ${t.e},${t.f} ≠ 계산 ${OX},${OY})`;
+    }
+    log.push(`정답 자리 짚기:  ${hit}`);
+  }
 
   return log.join('\n');
 })()

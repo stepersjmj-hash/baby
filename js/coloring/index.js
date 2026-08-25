@@ -26,6 +26,7 @@ import { floodFill, alphaMask, hexToRgba } from './fill.js';
 import { sfx, voice } from '../core/audio.js';
 import { works, drafts, linework } from '../core/store.js';
 import { photoToLineArt } from './photopage.js';
+import { refreshSketch } from './naspages.js';
 import { toolIcon } from '../core/icons.js';
 
 const DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -105,8 +106,9 @@ export function initColoring({ toast, goHome }) {
   /* 내 사진 밑그림 (외곽선 PNG). draw 가 이미지를 그리는 것 말고는
      기본 밑그림과 똑같이 취급된다 — 물감통 벽도 그대로 잡힌다 */
   let photoPages = [];
+  let sketchPages = [];              // NAS sketch 폴더의 도안 (naspages.js)
   const lwImgs = new Map();          // linework id → { img, url }
-  const allPages = () => [...PAGES, ...photoPages];
+  const allPages = () => [...PAGES, ...sketchPages, ...photoPages];
 
   let recs = [];
   let redo = [];
@@ -719,7 +721,13 @@ export function initColoring({ toast, goHome }) {
         찍어 둔 사진 밑그림이 있으면 그중 하나를 펼치고, 하나도 없으면
         그림 고르기 시트를 열어 준다 — 거기 📷 로 사진을 추가한다. */
     enter(mode) {
-      refreshLinework().finally(() => {
+      // NAS 도안은 1.2초까지만 기다린다 — NAS 가 꺼져 있거나 집 밖이어도
+      // 화면이 열리는 걸 막지 않는다. 늦게 도착한 목록은 뒤에서 마저 읽혀
+      // 다음 "다른 그림" 열기부터 나타난다.
+      const sketch = refreshSketch().then(p => { sketchPages = p; }).catch(() => {});
+      const jobs = [refreshLinework(),
+                    Promise.race([sketch, new Promise(r => setTimeout(r, 1200))])];
+      Promise.allSettled(jobs).then(() => {
         const photo = mode === 'photo';
         const pool = photo && photoPages.length ? photoPages : allPages();
         const last = localStorage.getItem('lastPage');

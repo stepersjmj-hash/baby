@@ -18,13 +18,27 @@
 import { attachPen } from '../core/pen.js';
 import { fitPaper, setOrigin } from '../core/fit.js';
 import { STAR } from '../core/icons.js';
-import { VIEW, PANEL, SPOTS, buildSpot } from './scenes.js';
+import { PANEL, SPOTS, buildSpot } from './scenes.js';
 import { createSpot } from './judge.js';
 import { sfx } from '../core/audio.js';
 
 const DPR = Math.min(window.devicePixelRatio || 1, 2);
 const DONE_KEY = 'spotDone';
 const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+
+/* 두 그림판과 그 왼쪽 ⭐ 표시줄만 쓴다 — 그 상자를 종이에 꽉 채운다.
+   그림이 클수록 다른 곳이 잘 보인다. 왼쪽에 ⭐ 줄이 서므로 그만큼 자리를
+   낸다. 위쪽은 그림판 바로 위까지만 — 예전엔 별을 가운데 위에 뒀는데,
+   가로 화면에서는 배율이 커져 종이 위 마스킹테이프에 가려 안 보였다.
+
+   ★ 상자는 **자가 점검과 공용**이라 모듈 밖으로 내보낸다. 화면이 쓰는 상자와
+     점검이 짐작한 상자가 갈리면, 좌표가 어긋나도 점검이 못 잡는다. */
+export const STAR_X = PANEL.lx - 44;                // ⭐ 줄이 서는 자리
+export const BOX = {
+  x: STAR_X - 26, y: PANEL.ty - 14,
+  w: (PANEL.rx + PANEL.w + 14) - (STAR_X - 26),
+  h: (PANEL.ty + PANEL.h + 14) - (PANEL.ty - 14)
+};
 
 export function initSpot({ toast, goHome }) {
   const $ = (id) => document.getElementById(id);
@@ -46,14 +60,6 @@ export function initSpot({ toast, goHome }) {
   let party = null, raf = 0, advanceTimer = 0;
 
   /* ── 레이아웃 ─────────────────────────────────────────── */
-
-  /* 두 그림판과 그 위의 ⭐ 표시줄만 쓴다 — 그 상자를 종이에 꽉 채운다.
-     그림이 클수록 다른 곳이 잘 보인다. */
-  const BOX = {
-    x: PANEL.lx - 14, y: 34,
-    w: (PANEL.rx + PANEL.w + 14) - (PANEL.lx - 14),
-    h: (PANEL.ty + PANEL.h + 14) - 34
-  };
 
   function doLayout() {
     const fit = fitPaper($('spot-stage'), paper, BOX, DPR);
@@ -112,13 +118,14 @@ export function initSpot({ toast, goHome }) {
         mctx.stroke();
       }
     }
-    // 몇 개 찾았나 — 가운데 위에 ●○ 로만 (숫자를 못 읽어도 안다)
-    const n = judge.total, cx = VIEW.w / 2, gap = 46;
+    /* 몇 개 찾았나 — 왼쪽에 ⭐ 를 세로로 (숫자를 못 읽어도 안다).
+       가운데 위에 두면 가로 화면에서 종이 위 테이프에 가린다. */
+    const n = judge.total, gap = 52;
+    const y0 = PANEL.ty + PANEL.h / 2 - (n - 1) * gap / 2;
     mctx.textAlign = 'center'; mctx.textBaseline = 'middle';
-    mctx.font = `${30 * S}px ${EMOJI_FONT}`;
+    mctx.font = `${34 * S}px ${EMOJI_FONT}`;
     for (let i = 0; i < n; i++)
-      mctx.fillText(i < judge.count ? '⭐' : '⚪',
-                    (cx + (i - (n - 1) / 2) * gap) * S, 58 * S);
+      mctx.fillText(i < judge.count ? '⭐' : '⚪', STAR_X * S, (y0 + i * gap) * S);
     if (party) {
       mctx.save();
       for (const q of party) {
@@ -179,8 +186,11 @@ export function initSpot({ toast, goHome }) {
 
   /* ── 펜 입력 ──────────────────────────────────────────── */
   /** 화면 좌표 → 어느 그림판이든 그 판의 로컬 좌표. 판 밖이면 null */
+  /* pt 는 `local()` 을 거쳐 **이미 원점이 옮겨진** 캔버스 좌표다.
+     여기서 OX/OY 를 또 빼면 안 된다 — 그러면 잉크는 손끝을 따라가는데
+     판정만 그만큼 어긋나서 "엉뚱한 곳이 체크된다". */
   function toLocal(pt) {
-    const x = (pt.x - OX) / S, y = (pt.y - OY) / S - PANEL.ty;
+    const x = pt.x / S, y = pt.y / S - PANEL.ty;
     if (y < -20 || y > PANEL.h + 20) return null;
     for (const ox of [PANEL.lx, PANEL.rx]) {
       const lx = x - ox;

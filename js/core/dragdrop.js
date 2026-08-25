@@ -1,8 +1,8 @@
 /* ============================================================
    core/dragdrop.js — "끌어다 놓고 맞는지 본다" 판정 엔진
    ------------------------------------------------------------
-   짝 맞추기 · 모양 분류 · 세어보기 · 크기 순서 · 조각 퍼즐 · 기억력 카드가
-   전부 이 엔진 하나를 쓴다. 콘텐츠는 "무엇과 무엇이 짝인가" 만 정하면 된다.
+   모양 분류가 이걸 쓴다 (짝 맞추기·크기 순서·기억력 카드도 같은 얼개다).
+   콘텐츠는 "무엇과 무엇이 짝인가" 만 정하면 된다.
 
    좌표계는 1000×700 (VIEW). trace.js 와 같다.
 
@@ -21,14 +21,17 @@ export const VIEW = { w: 1000, h: 700 };
  * @param accepts  (a, b) => boolean   두 카드가 짝인가.
  *                 좌우 어느 쪽을 먼저 집었든 (왼쪽것, 오른쪽것) 순서로 부른다.
  * @param grab     집히는 반경 배수. 아이 손이라 넉넉하게 잡는다.
+ * @param reuseRight 오른쪽을 여러 번 쓸 수 있는가. 분류는 한 바구니에 여러 개가
+ *                 들어가므로 true (짝 맞추기는 1:1 이라 false).
  */
-export function createDrag({ left, right, accepts, grab = 1.2 }) {
+export function createDrag({ left, right, accepts, grab = 1.2, reuseRight = false }) {
   const pairs = new Map();            // leftId → rightId (맞춘 것)
   const usedRight = new Set();
   let held = null;                    // { item, side }
 
   const doneL = (it) => pairs.has(it.id);
-  const doneR = (it) => usedRight.has(it.id);
+  const doneR = (it) => !reuseRight && usedRight.has(it.id);
+  const need = reuseRight ? left.length : Math.min(left.length, right.length);
 
   function nearest(list, x, y, done) {
     let best = null, bd = Infinity;
@@ -45,8 +48,8 @@ export function createDrag({ left, right, accepts, grab = 1.2 }) {
     get held() { return held; },
     /** 맞춘 짝들 [[leftId, rightId], ...] */
     get pairs() { return [...pairs]; },
-    get solved() { return pairs.size >= Math.min(left.length, right.length); },
-    ratio() { return pairs.size / Math.max(1, Math.min(left.length, right.length)); },
+    get solved() { return pairs.size >= need; },
+    ratio() { return pairs.size / Math.max(1, need); },
 
     /** pointerdown — 카드를 집는다. 양쪽 어디서나 집을 수 있다 */
     pick(x, y) {

@@ -5,6 +5,7 @@
 import { initColoring } from './coloring/index.js';
 import { initPractice } from './trace/index.js';
 import { initVideo } from './video/index.js';
+import { initSort } from './sort/index.js';
 import { initPuzzle } from './puzzle/index.js';
 import { initSpot } from './spot/index.js';
 import { initCount } from './count/index.js';
@@ -59,7 +60,7 @@ const ACTIVITIES = [
   { id: 'count',    group: 'think',  name: '세어보기',      desc: '몇 개일까?', ready: true },
   { id: 'spot',     group: 'think',  name: '다른 그림 찾기', desc: '눈썰미 대결', ready: true },
 
-  { id: 'sort',     group: 'soon',   name: '모양 분류',     desc: '끌어다 담기' },
+  { id: 'sort',     group: 'think',  name: '모양 분류',     desc: '끌어다 담기', ready: true },
 
   /* 숨김 — 설정에서 켜야 홈에 나온다. 그리기 앱에 영상이 늘 보이면
      아이가 그것만 찾는다. 부모가 열어 주는 자리다. */
@@ -80,7 +81,7 @@ const SCREEN_OF = { coloring: 'coloring', photo: 'coloring',
                     trace: 'trace', hangul: 'trace', english: 'trace',
                     names: 'trace',
                     number: 'trace', maze: 'trace', dots: 'trace', puzzle: 'puzzle',
-                    spot: 'spot', count: 'count', video: 'video' };
+                    spot: 'spot', count: 'count', video: 'video', sort: 'sort' };
 
 function show(name) {
   for (const s of document.querySelectorAll('.screen')) s.classList.remove('is-active');
@@ -195,7 +196,8 @@ const ACTIVITY_APPS = {
   puzzle: initPuzzle({ toast, goHome }),
   spot: initSpot({ toast, goHome }),
   count: initCount({ toast, goHome }),
-  video: initVideo({ goHome })
+  video: initVideo({ goHome }),
+  sort: initSort({ toast, goHome })
 };
 
 buildHome();

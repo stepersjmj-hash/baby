@@ -31,6 +31,7 @@ const { NUMBERS } = await import('../js/trace/numbers.js');
 const { ENGLISH } = await import('../js/trace/english.js');
 const { NAMES } = await import('../js/trace/names.js');
 const { LEVELS, buildCount, COUNT_SAY, GAE } = await import('../js/count/levels.js');
+const { LEVELS: SORT_LEVELS } = await import('../js/sort/levels.js');
 
 /* ── 문구 모으기: say() 에 들어가는 텍스트와 정확히 같아야 한다 ── */
 const KO = new Set(), EN = new Set();
@@ -48,6 +49,7 @@ for (const L of LEVELS) {                                    // 세어보기
   KO.add(`${L.name.replace(/만$/, '')} ${GAE[b.answer - 1]}!`);
 }
 for (const w of COUNT_SAY) KO.add(w);
+for (const L of SORT_LEVELS) KO.add(L.ask);                   // 모양 분류 안내말 (기준마다 하나)
 
 /* ── 파일명: 읽을 수 있게 문구 그대로 (특수문자만 -) ── */
 const slug = (text, lang) =>
