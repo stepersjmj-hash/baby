@@ -102,6 +102,11 @@ export function initPractice({ toast, goHome }) {
      단계를 옮길 때마다 반복하면 성가시다. */
   const introSaid = new Set();
 
+  /* 홈 카드가 방금 안내말을 했으면 이번 openLevel 은 조용히 연다.
+     소리를 겹쳐 내면 나중 것이 앞엣것을 끊어서, 안내말이 "숫자를 써—" 하고
+     잘린 채 글자 이름만 들린다. 한 번 열 때 한 마디가 원칙이다. */
+  let quiet = false;
+
   /* 펜이 닿아 있는 동안 계속 나는 소리 (선 긋기=미끄러짐, 한글·숫자=사각사각,
      미로=또각또각). 점 잇기만 없다 — 점에 닿을 때 울리는 게 더 분명하다. */
   let vox = null, voxAt = 0, voxPt = null;
@@ -519,7 +524,9 @@ export function initPractice({ toast, goHome }) {
     // 실측: 그리기(드래그)의 끝 이벤트는 pointerup/touchend 모두 권한이 없다.
     // 이름 쓰기는 이름을 미리 읽지 않는다 — 완성이 보상이다.
     // 안내말은 이 코스에 처음 들어왔을 때 한 번만 한다.
-    if (course.lang) {
+    // quiet = 홈 카드가 방금 안내말("숫자를 써 보자")을 했다는 뜻. 그 위로
+    // 글자를 읽으면 방금 한 말이 잘린다 (클립은 새로 틀 때 앞엣것을 끊는다).
+    if (course.lang && !quiet) {
       if (!course.full) say(level.say ?? level.name, course.lang);
       else if (course.intro && !introSaid.has(courseId)) {
         introSaid.add(courseId);
@@ -649,8 +656,11 @@ function tryFace(chip, name) {
   window.addEventListener('orientationchange', () => setTimeout(layout, 250));
 
   return {
-    /** @param id COURSES 의 키 (trace / hangul / number / maze / dots) */
-    enter(id) {
+    /** @param id COURSES 의 키 (trace / hangul / number / maze / dots)
+        @param announced 홈 카드가 안내말을 이미 했나 (그러면 글자 읽기는 건너뛴다) */
+    enter(id, announced) {
+      quiet = !!announced;
+      if (quiet) introSaid.add(id);             // 코스 제 안내말도 겹치지 않게
       courseId = id in COURSES ? id : 'trace';
       course = COURSES[courseId];
       // 열 때마다 새로 만드는 코스(미로)는 여기서 다시 굽는다
@@ -672,6 +682,7 @@ function tryFace(chip, name) {
       level = built[i];
       buildStrip();
       openLevel(i);
+      quiet = false;                            // 다음부터(칩·◀▶)는 평소대로 읽는다
       layout();
     }
   };

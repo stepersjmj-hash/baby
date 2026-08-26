@@ -9,7 +9,8 @@ import { initSort } from './sort/index.js';
 import { initPuzzle } from './puzzle/index.js';
 import { initSpot } from './spot/index.js';
 import { initCount } from './count/index.js';
-import { unlock, sfx, setMuted, isMuted, audioState } from './core/audio.js';
+import { unlock, sfx, setMuted, isMuted, audioState, say } from './core/audio.js';
+import { INTRO } from './core/intros.js';
 import { works } from './core/store.js';
 import { icon, arrow, toolIcon, ACT_ICON } from './core/icons.js';
 
@@ -129,8 +130,16 @@ function buildHome() {
       card.addEventListener('click', () => {
         if (!a.ready) { toast('아직 준비 중이에요'); return; }
         sfx.tap();
+        /* 무엇을 고른 건지 말로 알려 준다. click 핸들러의 동기 흐름이라
+           iOS 소리 권한이 확실하고, 여기서 한 번 나면 세션이 풀려
+           그 뒤의 비동기 읽기까지 살아난다.
+           화면에 넘기는 announced 는 "안내말을 방금 했다"는 뜻 —
+           받은 화면은 제 안내말(글자 읽기 등)을 건너뛴다. 안 그러면
+           뒤이어 나오는 소리가 방금 한 말을 잘라 먹는다. */
+        const said = INTRO[a.id];
+        if (said) say(said);
         show(a.id);
-        ACTIVITY_APPS[a.id].enter(a.id);
+        ACTIVITY_APPS[a.id].enter(a.id, !!said);
       });
       grid.appendChild(card);
     }
@@ -288,10 +297,16 @@ if (!window.matchMedia('(display-mode: standalone)').matches && !navigator.stand
     '공유 버튼 → "홈 화면에 추가" 하면 전체 화면 앱처럼 쓸 수 있어요';
 }
 
-// 지금 화면이 어느 버전인지 홈 구석에 찍는다 — "반영된 거야?" 를 눈으로 확인
+/* 지금 화면이 어느 버전인지 홈 구석에 찍는다 — "반영된 거야?" 를 눈으로 확인.
+   둘을 같이 찍는 이유: **릴리스 번호는 사람이 부르는 이름**(git 태그와 같다)이고,
+   **캐시 번호(sw.js)는 파일이 바뀔 때마다 오른다**. 화면이 실제로 새 파일을
+   받았는지 가리는 건 뒤엣것이라, 하나로 합치면 오타 하나 고칠 때도 릴리스를
+   올려야 하거나(번거롭다) 캐시가 안 바뀌어 옛 화면이 남는다(겪은 함정). */
+const APP_VERSION = '1.0.0';
 fetch('sw.js').then(r => r.text()).then(t => {
   const m = /VERSION = '([^']+)'/.exec(t);
-  if (m) $('install-hint').textContent += ($('install-hint').textContent ? ' · ' : '') + m[1];
+  const tag = APP_VERSION + (m ? ' · ' + m[1] : '');
+  $('install-hint').textContent += ($('install-hint').textContent ? ' · ' : '') + tag;
 }).catch(() => {});
 
 /* 음소거 상태로 시작하면 조용한 이유를 화면이 직접 알린다.

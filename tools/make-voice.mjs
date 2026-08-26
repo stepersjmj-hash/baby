@@ -32,6 +32,7 @@ const { ENGLISH } = await import('../js/trace/english.js');
 const { NAMES } = await import('../js/trace/names.js');
 const { LEVELS, buildCount, COUNT_SAY, GAE } = await import('../js/count/levels.js');
 const { LEVELS: SORT_LEVELS } = await import('../js/sort/levels.js');
+const { INTRO } = await import('../js/core/intros.js');
 
 /* ── 문구 모으기: say() 에 들어가는 텍스트와 정확히 같아야 한다 ── */
 const KO = new Set(), EN = new Set();
@@ -42,7 +43,7 @@ for (const L of NAMES) {                                     // 이름 + 음절
   KO.add(L.say);
   for (const ch of Object.values(L.sylSay)) KO.add(ch);
 }
-KO.add('이름을 써 보자');                                     // 이름 쓰기 안내말
+for (const t of Object.values(INTRO)) KO.add(t);             // 활동을 고를 때 안내말
 for (const L of LEVELS) {                                    // 세어보기
   KO.add(L.ask);
   const b = buildCount(L);                                   // 정답 문구는 씨앗으로 고정돼 있다
