@@ -30,6 +30,9 @@ export const solid = (inner, size = 32) =>
    버튼 하나가 여러 화면에 있으므로(홈 버튼만 5개) 여기 한 줄이
    전부에 반영된다. index.html 의 data-icon 이 이 표의 키다. */
 const PATHS = {
+  note:   '<path d="M18 34V10l20-4v24"/>' +
+          '<ellipse cx="13" cy="35" rx="6" ry="5"/>' +
+          '<ellipse cx="33" cy="31" rx="6" ry="5"/>',
   film:   '<rect x="6" y="12" width="36" height="24" rx="4"/>' +
           '<path d="M14 12v24M34 12v24"/>' +
           '<path d="M6 20h8M6 28h8M34 20h8M34 28h8"/>',
@@ -146,6 +149,9 @@ export const ACT_ICON = {
   spot:     act('<circle cx="20" cy="20" r="11"/><path d="M29 29l11 11"/>'),
   video:    act('<rect x="5" y="11" width="38" height="26" rx="6"/>' +
                 '<path d="M20 19l10 5-10 5z"/>'),
+  music:    act('<path d="M19 33V12l18-4v21"/>' +
+                '<ellipse cx="14" cy="34" rx="5.5" ry="4.5"/>' +
+                '<ellipse cx="32" cy="30" rx="5.5" ry="4.5"/>'),
   sort:     act('<rect x="8" y="8" width="13" height="13" rx="3"/>' +
                 '<circle cx="35" cy="14" r="7"/><path d="M17 40l7-11 7 11z"/>')
 };

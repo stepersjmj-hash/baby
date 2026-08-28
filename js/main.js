@@ -5,6 +5,7 @@
 import { initColoring } from './coloring/index.js';
 import { initPractice } from './trace/index.js';
 import { initVideo } from './video/index.js';
+import { initMusic } from './music/index.js';
 import { initSort } from './sort/index.js';
 import { initPuzzle } from './puzzle/index.js';
 import { initSpot } from './spot/index.js';
@@ -66,14 +67,17 @@ const ACTIVITIES = [
   /* 숨김 — 설정에서 켜야 홈에 나온다. 그리기 앱에 영상이 늘 보이면
      아이가 그것만 찾는다. 부모가 열어 주는 자리다. */
   { id: 'video',    group: 'create', name: '영상 보기',     desc: '오늘의 영상', ready: true,
+    hidden: true },
+  { id: 'music',    group: 'create', name: '노래 듣기',     desc: '같이 불러요', ready: true,
     hidden: true }
 ];
 
-/* ── 영상 보기 (숨김 기능) ────────────────────────────────
-   기본은 꺼짐. 켜면 홈 "창작" 갈래에 카드가 나타난다.
+/* ── 숨김 기능 (영상 보기 · 노래 듣기) ────────────────────
+   기본은 꺼짐. 설정에서 켜야 홈 "창작" 갈래에 카드가 나타난다.
+   활동마다 열쇠가 따로라 노래만 켜 둘 수도 있다.
    ★ buildHome() 이 이걸 부르므로 **홈보다 먼저** 선언돼야 한다. */
-const VIDEO_KEY = 'haichu.video';
-const videoOn = () => localStorage.getItem(VIDEO_KEY) === 'on';
+const HIDDEN_KEY = { video: 'haichu.video', music: 'haichu.music' };
+const shownOn = (id) => localStorage.getItem(HIDDEN_KEY[id]) === 'on';
 
 /* ── 화면 전환 ─────────────────────────────────────────────
    따라 그리기류 다섯(선 긋기·한글·숫자·미로·점 잇기)은 화면이 같아서
@@ -82,7 +86,7 @@ const SCREEN_OF = { coloring: 'coloring', photo: 'coloring',
                     trace: 'trace', hangul: 'trace', english: 'trace',
                     names: 'trace',
                     number: 'trace', maze: 'trace', dots: 'trace', puzzle: 'puzzle',
-                    spot: 'spot', count: 'count', video: 'video', sort: 'sort' };
+                    spot: 'spot', count: 'count', video: 'video', music: 'music', sort: 'sort' };
 
 function show(name) {
   for (const s of document.querySelectorAll('.screen')) s.classList.remove('is-active');
@@ -104,7 +108,7 @@ function buildHome() {
   const wrap = $('activity-groups');
   wrap.innerHTML = '';
   for (const g of GROUPS) {
-    const items = ACTIVITIES.filter(a => a.group === g.id && (!a.hidden || videoOn()));
+    const items = ACTIVITIES.filter(a => a.group === g.id && (!a.hidden || shownOn(a.id)));
     if (!items.length) continue;
 
     const box = document.createElement('div');
@@ -206,6 +210,7 @@ const ACTIVITY_APPS = {
   spot: initSpot({ toast, goHome }),
   count: initCount({ toast, goHome }),
   video: initVideo({ goHome }),
+  music: initMusic({ goHome }),
   sort: initSort({ toast, goHome })
 };
 
@@ -255,18 +260,22 @@ for (const [id, nm, desc] of [['hand-left', '왼손', '왼쪽에 손을 얹어�
 }
 applyHand();
 
-function applyVideo() {
-  const b = $('opt-video');
-  b.classList.toggle('is-on', videoOn());
-  b.setAttribute('aria-pressed', String(videoOn()));
+/* 숨김 기능 토글(영상 보기·노래 듣기) — 둘이 같은 코드를 쓴다.
+   그리기 앱에 영상·노래가 늘 보이면 아이가 그것만 찾는다. 부모가 여는 자리다. */
+function applyHidden(id) {
+  const b = $('opt-' + id);
+  b.classList.toggle('is-on', shownOn(id));
+  b.setAttribute('aria-pressed', String(shownOn(id)));
 }
-$('opt-video').addEventListener('click', () => {
-  localStorage.setItem(VIDEO_KEY, videoOn() ? 'off' : 'on');
-  applyVideo();
-  buildHome();                       // 카드가 바로 나타나거나 사라진다
-  sfx.tap();
-});
-applyVideo();
+for (const id of Object.keys(HIDDEN_KEY)) {
+  $('opt-' + id).addEventListener('click', () => {
+    localStorage.setItem(HIDDEN_KEY[id], shownOn(id) ? 'off' : 'on');
+    applyHidden(id);
+    buildHome();                     // 카드가 바로 나타나거나 사라진다
+    sfx.tap();
+  });
+  applyHidden(id);
+}
 
 $('btn-settings').addEventListener('click', () => { sfx.tap(); $('sheet-settings').hidden = false; });
 $('btn-settings-close').addEventListener('click', () => { $('sheet-settings').hidden = true; });
@@ -302,7 +311,7 @@ if (!window.matchMedia('(display-mode: standalone)').matches && !navigator.stand
    **캐시 번호(sw.js)는 파일이 바뀔 때마다 오른다**. 화면이 실제로 새 파일을
    받았는지 가리는 건 뒤엣것이라, 하나로 합치면 오타 하나 고칠 때도 릴리스를
    올려야 하거나(번거롭다) 캐시가 안 바뀌어 옛 화면이 남는다(겪은 함정). */
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';
 fetch('sw.js').then(r => r.text()).then(t => {
   const m = /VERSION = '([^']+)'/.exec(t);
   const tag = APP_VERSION + (m ? ' · ' + m[1] : '');

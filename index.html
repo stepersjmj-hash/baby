@@ -229,6 +229,15 @@
       </span>
       <span class="switch" aria-hidden="true"><i></i></span>
     </button>
+
+    <p class="panel-q">노래 듣기</p>
+    <button class="opt-card" id="opt-music" type="button" aria-pressed="false">
+      <span class="opt-text">
+        <span class="nm">홈에 보이기</span>
+        <span class="desc">꺼 두면 홈에서 사라져요</span>
+      </span>
+      <span class="switch" aria-hidden="true"><i></i></span>
+    </button>
   </div>
 </div>
 
@@ -282,6 +291,33 @@
     <span class="lvl-name" id="video-name"></span>
     <button data-icon="next" class="rbtn" id="btn-video-next" type="button"
             aria-label="다음 시리즈"></button>
+    <div class="palm" aria-hidden="true"></div>
+  </div>
+</section>
+
+<!-- ───────────────────────── 노래 듣기 ───────────────────────── -->
+<section id="screen-music" class="screen">
+
+  <div class="tray tray-top">
+    <div class="tools" id="music-strip"></div>
+  </div>
+
+  <div class="stage" id="music-stage">
+    <div class="paper" id="music-paper">
+      <video id="music-player" playsinline controls preload="metadata"></video>
+      <div class="video-empty" id="music-empty" hidden></div>
+      <div class="paper-rings" aria-hidden="true"></div>
+    </div>
+  </div>
+
+  <div class="tray tray-bottom">
+    <button data-icon="home" class="rbtn" id="btn-music-home" type="button"></button>
+    <div class="spacer"></div>
+    <button data-icon="prev" class="rbtn" id="btn-music-prev" type="button"
+            aria-label="이전 노래"></button>
+    <span class="lvl-name" id="music-name"></span>
+    <button data-icon="next" class="rbtn" id="btn-music-next" type="button"
+            aria-label="다음 노래"></button>
     <div class="palm" aria-hidden="true"></div>
   </div>
 </section>

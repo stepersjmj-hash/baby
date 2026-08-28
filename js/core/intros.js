@@ -30,5 +30,6 @@ export const INTRO = {
   puzzle:   '퍼즐을 맞춰 보자',
   spot:     '다른 그림을 찾아보자',
 
-  video:    '영상을 보자'
+  video:    '영상을 보자',
+  music:    '노래를 들어 보자'
 };
