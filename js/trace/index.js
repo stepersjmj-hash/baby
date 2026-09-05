@@ -21,6 +21,7 @@ import { fitPaper, setOrigin, boxOf } from '../core/fit.js';
 import { STAR, lvlIcon, STAGE_ART } from '../core/icons.js';
 import { buildLevel, createTracer } from '../core/trace.js';
 import { sfx, voice, say } from '../core/audio.js';
+import { optOn, setOpt } from '../core/opts.js';
 import { LINES } from './lines.js';
 import { HANGUL } from './hangul.js';
 import { NUMBERS } from './numbers.js';
@@ -47,7 +48,8 @@ const COURSES = {
   /* 미로만 fresh 를 가진다 — 코스에 들어올 때마다 새로 판다.
      같은 미로가 계속 나오면 금방 지루해진다 (칸 수·id 는 그대로라 별은 남는다). */
   maze:   { levels: MAZES,   guide: false, tol: 40, key: 'mazeDone',   voice: 'scurry',
-            fresh: newMazes, chip: 34, art: { from: 'runner', to: 'level' } },
+            fresh: newMazes, chip: 34, art: { from: 'runner', to: 'level' },
+            magnetKey: 'magnet' },
   /* 점 잇기: 닫힌 도형이라 도착점이 곧 출발점이다 — 도착 그림을 그리면
      연필과 겹친다. 선은 단색(ink)에 가늘게, 점과 번호가 주인공이다. */
   dots:   { levels: DOTS,    guide: false, tol: 60, key: 'dotsDone',   voice: null,
@@ -63,6 +65,8 @@ const DPR = Math.min(window.devicePixelRatio || 1, 2);
 const ROAD = 62;        // 길 너비 (1000×700 좌표 단위)
 const FILL = 44;        // 채워지는 선 너비
 const ICON = 62;        // 출발/도착 그림 크기
+const INK = '#ded2b8';       // 아이가 그은 자국 (자석 켜짐 — 획마다 지워진다)
+const INK_KEEP = '#a8926a';  // 자석 꺼짐 — 지나온 길이 그대로 남으니 진하게
 
 const emoji = (ctx, ch, x, y, size) => {
   ctx.save();
@@ -119,6 +123,20 @@ export function initPractice({ toast, goHome }) {
      진행이 그 지점을 넘으면 "딩" 하고 한 음씩 올라간다. */
   let dotAt = [], dotsHit = 0;
 
+  /* ── 자석 끄기 (미로) ──────────────────────────────────
+     기본(자석 켜짐)은 길에서 벗어나도 아무 일도 일어나지 않는다 —
+     진행이 멈출 뿐이고, 화면에 남는 건 길에 착 붙은 무지개다.
+     자석을 끄면 **지나간 자리가 그대로 남고**, 막다른 길에서 펜을 떼는
+     순간 삐빅 + ✗ 로 알려 주고 그 잘못 간 만큼만 지운다(길 위였던
+     마지막 자리로 되돌아간다). 펜을 떼지 않고 스스로 돌아 나오면
+     아무 일도 없다 — 판정은 **뗄 때** 한 번만 한다.
+     좌표는 1000×700 로 저장한다. 화면을 돌려도 자국이 따라오게. */
+  let strict = false;
+  let inkKept = [];        // 지금까지 인정된 자국들
+  let inkNow = [];         // 지금 긋고 있는 자국
+  let inkOk = 0;           // 이번 자국에서 마지막으로 길 위였던 점 번호
+  let xmark = null;        // 잘못 간 자리에 찍는 ✗ {x, y, t}
+
   /* ── 레이아웃 ─────────────────────────────────────────── */
 
   /* 코스마다 실제로 쓰는 자리가 다르다 — 미로는 판 전체를, 이름 쓰기는
@@ -129,6 +147,7 @@ export function initPractice({ toast, goHome }) {
     const pts = [];
     for (const p of L.paths) pts.push(...p);
     for (const [x, y, w, h] of L.walls ?? []) pts.push({ x, y }, { x: x + w, y: y + h });
+    for (const w of L.wallPaths ?? []) for (const [x, y] of w) pts.push({ x, y });
     for (const [x, y] of L.dots ?? []) pts.push({ x, y });
     return pts;
   };
@@ -189,6 +208,17 @@ export function initPractice({ toast, goHome }) {
       }
     }
 
+    if (level.wallPaths) {                              // 원형 미로 벽 (선으로 긋는다)
+      gctx.strokeStyle = '#c9b189';
+      gctx.lineWidth = (level.wallW ?? 8) * S;
+      for (const w of level.wallPaths) {
+        gctx.beginPath();
+        gctx.moveTo(w[0][0] * S, w[0][1] * S);
+        for (let i = 1; i < w.length; i++) gctx.lineTo(w[i][0] * S, w[i][1] * S);
+        gctx.stroke();
+      }
+    }
+
     if (course.guide) {                                 // 따라갈 길 + 점선
       for (const p of level.paths) {
         pathTo(gctx, p, 0, p.length - 1);
@@ -223,6 +253,22 @@ export function initPractice({ toast, goHome }) {
         gctx.textAlign = 'center'; gctx.textBaseline = 'middle';
         gctx.fillText(String(i + 1), x * S, y * S + S);
       });
+    }
+  }
+
+  /** 자석을 껐을 때의 자국. 인정된 획들 + 지금 긋는 획을 통째로 다시 그린다
+      (되돌리기·화면 크기 변경 때만 부른다 — 그리는 중에는 이어 그린다) */
+  function drawInk() {
+    clear(ictx);
+    ictx.strokeStyle = INK_KEEP;
+    ictx.lineCap = 'round'; ictx.lineJoin = 'round';
+    ictx.lineWidth = 8 * S;
+    for (const path of [...inkKept, inkNow]) {
+      if (path.length < 2) continue;
+      ictx.beginPath();
+      ictx.moveTo(path[0].x * S, path[0].y * S);
+      for (let i = 1; i < path.length; i++) ictx.lineTo(path[i].x * S, path[i].y * S);
+      ictx.stroke();
     }
   }
 
@@ -327,6 +373,26 @@ export function initPractice({ toast, goHome }) {
       else emoji(xctx, level.from ?? course.from ?? '✏️', head.x * S, head.y * S, iconSz() * S);
     }
 
+    /* 잘못 간 자리의 ✗ — 자석을 껐을 때만 나온다. 1.4초 동안 옅어진다 */
+    if (xmark) {
+      const age = (now - xmark.t) / 1400;
+      if (age >= 1) xmark = null;
+      else {
+        const r = iconSz() * 0.42 * S * (1 + age * 0.3);
+        xctx.save();
+        xctx.globalAlpha = Math.max(0, 1 - age * age);
+        xctx.strokeStyle = '#e04a3a';
+        xctx.lineWidth = 9 * S; xctx.lineCap = 'round';
+        xctx.beginPath();
+        xctx.moveTo(xmark.x * S - r, xmark.y * S - r);
+        xctx.lineTo(xmark.x * S + r, xmark.y * S + r);
+        xctx.moveTo(xmark.x * S + r, xmark.y * S - r);
+        xctx.lineTo(xmark.x * S - r, xmark.y * S + r);
+        xctx.stroke();
+        xctx.restore();
+      }
+    }
+
     if (party) {
       for (const q of party.bits) {
         xctx.globalAlpha = Math.max(0, 1 - q.life);
@@ -341,7 +407,7 @@ export function initPractice({ toast, goHome }) {
     if (!W) return;
     drawGuide();
     clear(fctx);
-    clear(ictx);
+    if (strict) drawInk(); else clear(ictx);
     paintProgress();
     drawFx();
     animate();
@@ -350,7 +416,9 @@ export function initPractice({ toast, goHome }) {
   /* ── 애니메이션 (반짝이 · 출발점 두근거림) ────────────────
      상태는 절대 여기에 기대지 않는다. 백그라운드 탭이면 rAF 가 안 돌아
      멈추지만, 판정과 진행은 전부 포인터 이벤트 쪽에서 끝난다. */
-  function needsAnim() { return !!party || (!tracer.finished && tracer.index === 0 && !drawing); }
+  function needsAnim() {
+    return !!party || !!xmark || (!tracer.finished && tracer.index === 0 && !drawing);
+  }
 
   function animate() {
     cancelAnimationFrame(raf);
@@ -421,7 +489,7 @@ export function initPractice({ toast, goHome }) {
       localStorage.setItem(course.key, JSON.stringify([...done]));
       buildStrip();
     }
-    clear(ictx);
+    if (!strict) clear(ictx);         // 자석을 껐으면 아이가 지나온 길이 곧 상장이다
     vox?.stop(); vox = null;          // 쓰는 소리를 끄고 팡파르만 들리게
     sfx.cheer(courseId);
     // 읽기는 여기서 하지 않는다 — 완성은 보통 펜이 움직이는 중에 판정되는데,
@@ -440,6 +508,24 @@ export function initPractice({ toast, goHome }) {
     }, 1600);
   }
 
+  /** 자석을 껐을 때 펜을 뗀 순간의 판정 — **여기 한 곳에서만** 한다.
+      막다른 길에서 멈췄으면 삐빅 + ✗ 를 띄우고 길 위였던 마지막 자리까지
+      되돌린다. 그리는 도중에 스스로 돌아 나왔으면 아무 일도 없다
+      (아이가 헤매는 건 잘못이 아니다 — 포기하고 뗐을 때만 알려 준다). */
+  function endStrict() {
+    if (!inkNow.length) return;
+    const last = inkNow.length - 1;
+    if (!tracer.finished && inkOk < last) {
+      xmark = { x: inkNow[last].x, y: inkNow[last].y, t: performance.now() };
+      sfx.wrong();
+      inkNow = inkNow.slice(0, inkOk + 1);
+    }
+    if (inkNow.length > 1) inkKept.push(inkNow);
+    inkNow = [];
+    drawInk();
+    drawFx();
+  }
+
   let inkPrev = null;
   /* 펜은 캔버스 픽셀로 들어온다. 컨텍스트 원점을 옮겨 뒀으므로
      들어오는 자리에서 한 번만 같이 옮겨 주면 아래는 그대로다. */
@@ -450,20 +536,24 @@ export function initPractice({ toast, goHome }) {
       const pt = local(raw);
       if (!tracer || tracer.finished) return;
       drawing = true;
-      clear(ictx);                     // 시도할 때마다 자국은 새로
+      // 자석이 켜져 있으면 시도할 때마다 자국은 새로. 꺼져 있으면 지나온
+      // 길이 그대로 남아야 하므로 지우지 않고 이어 붙인다.
+      if (strict) { inkNow = []; inkOk = 0; xmark = null; }
+      else clear(ictx);
       inkPrev = pt;
       vox?.stop();
       vox = course.voice ? voice(course.voice) : null;
       voxAt = performance.now(); voxPt = pt;
       feed(pt);
+      if (strict) { inkNow.push({ x: pt.x / S, y: pt.y / S }); inkOk = 0; }
       animate();
     },
     onMove: (raws) => {
       if (!drawing) return;
       const pts = raws.map(local);
-      ictx.strokeStyle = '#ded2b8';                   // 불투명 — 겹쳐도 진해지지 않는다
+      ictx.strokeStyle = strict ? INK_KEEP : INK;     // 불투명 — 겹쳐도 진해지지 않는다
       ictx.lineCap = 'round'; ictx.lineJoin = 'round';
-      ictx.lineWidth = 7 * S;
+      ictx.lineWidth = (strict ? 8 : 7) * S;
       for (const pt of pts) {
         if (inkPrev) {
           ictx.beginPath();
@@ -472,7 +562,14 @@ export function initPractice({ toast, goHome }) {
           ictx.stroke();
         }
         inkPrev = pt;
-        if (feed(pt).allDone) break;
+        const r = feed(pt);
+        if (strict) {
+          inkNow.push({ x: pt.x / S, y: pt.y / S });
+          // 길 위에 있었던 마지막 자리를 기억해 둔다 — 펜을 뗄 때
+          // 여기까지만 남기고 되돌린다 (스스로 돌아 나오면 그냥 갱신된다)
+          if (r.on) inkOk = inkNow.length - 1;
+        }
+        if (r.allDone) break;
       }
       const last = pts[pts.length - 1];
       if (last) {
@@ -486,6 +583,7 @@ export function initPractice({ toast, goHome }) {
     onEnd: () => {
       drawing = false; inkPrev = null; voxPt = null;
       vox?.stop(); vox = null;
+      if (strict) endStrict();
       // 터치 기기(아이패드)에서는 pointerup 직후 원천 이벤트인 touchend 가
       // 따라온다 — 읽기는 거기서 한다 (아래 리스너). iOS 가 제스처 권한을
       // 주는 건 원천 터치 이벤트 쪽이다. 터치가 없는 기기(맥)만 여기서 읽는다.
@@ -507,6 +605,7 @@ export function initPractice({ toast, goHome }) {
     drawing = false;
     sayOnLift = null;
     vox?.stop(); vox = null;
+    inkKept = []; inkNow = []; inkOk = 0; xmark = null;
     dotsHit = 0;
     dotAt = (level.dots || []).map(([x, y]) => {          // 점 → 경로 인덱스
       const p = level.paths[0];
@@ -548,6 +647,7 @@ export function initPractice({ toast, goHome }) {
   function again() {
     tracer.reset();
     party = null;
+    inkKept = []; inkNow = []; inkOk = 0; xmark = null;
     dotsHit = 0;
     clearTimeout(advanceTimer);
     redrawAll();
@@ -645,6 +745,29 @@ function tryFace(chip, name) {
     say(level.say ?? level.name, course.lang ?? 'ko-KR');
   });
 
+  /* 자석 버튼 — 미로에서만 나온다 (course.magnetKey).
+     설정 시트가 아니라 여기 있는 이유: 켜고 끈 차이를 그 자리에서 바로
+     확인할 수 있어야 부모가 아이에게 맞는 쪽을 고른다.
+     누르면 지금 화면에 곧바로 반영된다 — 지금까지 그은 자국은 지우고
+     (자석이 켜지면 남길 이유가 없고, 꺼지면 새로 시작하는 게 맞다)
+     별을 향한 진행은 그대로 둔다. */
+  const magBtn = $('btn-trace-magnet');
+  function paintMagnet() {
+    magBtn.classList.toggle('is-on', !strict);
+    magBtn.setAttribute('aria-pressed', String(!strict));
+  }
+  magBtn.addEventListener('click', () => {
+    if (!course.magnetKey) return;
+    sfx.tap();
+    setOpt(course.magnetKey, strict);          // 지금 꺼져 있으면(strict) 켠다
+    strict = !optOn(course.magnetKey);
+    inkKept = []; inkNow = []; inkOk = 0; xmark = null;
+    paintMagnet();
+    redrawAll();
+    toast(strict ? '자석을 껐어요 — 다른 길로 가면 알려 줄게요'
+                 : '자석을 켰어요 — 길에서 벗어나도 괜찮아요');
+  });
+
   $('btn-trace-home').addEventListener('click', () => { clearTimeout(advanceTimer); goHome(); });
   $('btn-trace-again').addEventListener('click', again);
   $('btn-trace-prev').addEventListener('click', () => { sfx.tap(); openLevel(li - 1); });
@@ -663,6 +786,11 @@ function tryFace(chip, name) {
       if (quiet) introSaid.add(id);             // 코스 제 안내말도 겹치지 않게
       courseId = id in COURSES ? id : 'trace';
       course = COURSES[courseId];
+      /* 자석은 설정(홈)에서만 바뀌므로 들어올 때 한 번 읽으면 된다.
+         자석을 가진 코스는 미로뿐이다 (course.magnetKey). */
+      strict = !!course.magnetKey && !optOn(course.magnetKey);
+      magBtn.hidden = !course.magnetKey;
+      paintMagnet();
       // 열 때마다 새로 만드는 코스(미로)는 여기서 다시 굽는다
       if (course.fresh) {
         course.levels = course.fresh();

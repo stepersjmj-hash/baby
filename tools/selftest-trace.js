@@ -101,7 +101,35 @@
   log.push(`획순 지키기:       ${order.length ? `FAIL → ${order.join(' ')}`
                                               : `OK (샌 진행률 최대 ${(maxRatio * 100).toFixed(1)}%)`}`);
 
-  // 5) 화면 — 지금 열려 있는 코스의 단계 칩과 캔버스
+  // 5) 미로 — 해답이 벽을 뚫고 지나가지 않아야 한다.
+  //    원형 미로(벽이 rect 가 아니라 선 = wallPaths)를 넣으면서 생긴 검사다.
+  //    호를 곧은 선으로 이으면 벽을 가로지르는데, 그림만 봐서는 잘 안 보인다.
+  {
+    const sign = (p, q, r) =>
+      Math.sign((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]));
+    const crosses = (a, b, c, d) =>
+      sign(a, b, c) * sign(a, b, d) < 0 && sign(c, d, a) * sign(c, d, b) < 0;
+    const bad = [];
+    let checked = 0;
+    for (const L of COURSES['미로'][0]) {
+      if (!L.wallPaths) continue;                       // 네모 미로는 칸으로 판정된다
+      checked++;
+      const segs = [];
+      for (const w of L.wallPaths)
+        for (let i = 1; i < w.length; i++) segs.push([w[i - 1], w[i]]);
+      const p = buildLevel(L).paths[0];
+      outer:
+      for (let i = 1; i < p.length; i++) {
+        const a = [p[i - 1].x, p[i - 1].y], b = [p[i].x, p[i].y];
+        for (const [c, d] of segs)
+          if (crosses(a, b, c, d)) { bad.push(L.name); break outer; }
+      }
+    }
+    log.push(`원형 미로 ${String(checked).padStart(2)}개 벽:  ` +
+             (bad.length ? `FAIL → ${bad.join(' ')}` : 'OK (해답이 벽을 안 지난다)'));
+  }
+
+  // 6) 화면 — 지금 열려 있는 코스의 단계 칩과 캔버스
   const strip = document.getElementById('trace-strip');
   const cv = document.getElementById('t-guide');
   const on = document.getElementById('screen-trace')?.classList.contains('is-active');

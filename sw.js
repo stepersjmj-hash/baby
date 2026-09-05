@@ -6,7 +6,7 @@
      예전 캐시를 계속 쓴다 (가장 자주 겪는 함정).
    ============================================================ */
 
-const VERSION = 'v48';
+const VERSION = 'v51';
 const CACHE = `ainori-${VERSION}`;
 
 const SHELL = [
@@ -24,6 +24,7 @@ const SHELL = [
   './js/core/icons.js',
   './js/core/audio.js',
   './js/core/intros.js',
+  './js/core/opts.js',
   './js/core/store.js',
   './js/coloring/index.js',
   './js/coloring/brushes.js',

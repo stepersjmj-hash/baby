@@ -38,6 +38,7 @@
 
 import { sfx } from '../core/audio.js';
 import { icon } from '../core/icons.js';
+import { optOn, setOpt } from '../core/opts.js';
 
 const BASE = 'https://stepersjmj.synology.me:28443/mjimage/upload/video/';
 const dir = (name) => BASE + encodeURIComponent(name) + '/';
@@ -154,7 +155,7 @@ function coverFromVideo(url, onReady) {
   v.src = url + '#t=3';                             // 3초 지점 (짧으면 첫 장면)
 }
 
-export function initVideo({ goHome }) {
+export function initVideo({ toast, goHome }) {
   const $ = (id) => document.getElementById(id);
   const player = $('video-player'), empty = $('video-empty'), strip = $('video-strip');
   const coverImg = $('video-cover');
@@ -168,12 +169,15 @@ export function initVideo({ goHome }) {
     catch { /* 사파리 사생활 모드 */ }
   }
 
-  /** 편 하나를 튼다 (썸네일을 눌렀을 때만) */
+  /** 편 하나를 튼다 (썸네일을 눌렀을 때, 또는 자동 재생일 때) */
   function play(n) {
     ep = n;
     player.hidden = false;
     empty.hidden = true;
     coverImg.hidden = true;
+    // 반복 보기는 <video loop> 에 맡긴다 — 다시 받아 오지 않아 끊김이 없다
+    // (이때는 ended 가 아예 안 울린다).
+    player.loop = optOn('videoLoop');
     player.src = dir(cur().name) + n + '.mp4';
     player.play().catch(() => { /* 자동재생을 막으면 재생 버튼으로 */ });
     for (const b of strip.children) b.classList.toggle('is-on', +b.dataset.ep === n);
@@ -226,6 +230,33 @@ export function initVideo({ goHome }) {
     showCover();
   }
 
+  /* ── 재생 방식 버튼 (하단) ──────────────────────────────
+     설정 시트가 아니라 이 화면 아래에 둔다 — 보는 자리에서 바로 바꾼다.
+     반복과 한 번만은 서로 배타적이라(opts.js 의 group) 하나를 켜면 다른
+     하나가 꺼진다. 켠 순간 지금 틀고 있는 영상에도 바로 반영한다. */
+  const TOGGLES = [
+    ['btn-video-auto', 'videoAuto', '자동 재생 — 들어오면 바로 이어서 틀어요'],
+    ['btn-video-loop', 'videoLoop', '반복 — 끝나면 같은 영상을 다시 틀어요'],
+    ['btn-video-once', 'videoOnce', '한 번만 — 끝나면 멈춰요']
+  ];
+  function paintToggles() {
+    for (const [id, opt] of TOGGLES) {
+      const b = $(id);
+      b.classList.toggle('is-on', optOn(opt));
+      b.setAttribute('aria-pressed', String(optOn(opt)));
+    }
+  }
+  for (const [id, opt, msg] of TOGGLES) {
+    $(id).addEventListener('click', () => {
+      sfx.tap();
+      const on = !optOn(opt);
+      setOpt(opt, on);
+      paintToggles();
+      player.loop = optOn('videoLoop');          // 지금 틀고 있는 영상에 바로
+      toast(on ? msg : '껐어요');
+    });
+  }
+
   $('btn-video-home').addEventListener('click', () => {
     player.pause();
     player.removeAttribute('src');
@@ -233,14 +264,18 @@ export function initVideo({ goHome }) {
   });
   $('btn-video-prev').addEventListener('click', () => { sfx.tap(); openSeries(si - 1); });
   $('btn-video-next').addEventListener('click', () => { sfx.tap(); openSeries(si + 1); });
-  // 한 편이 끝나면 다음 편으로 (마지막이면 목록으로 돌아온다)
+  /* 한 편이 끝나면 — 기본은 다음 편으로, 마지막이면 목록으로 돌아온다.
+     설정에서 "한 번만 보기" 를 켜면 끝나고 멈춘다(=목록).
+     "반복 보기" 는 player.loop 라 여기까지 오지도 않는다. */
   player.addEventListener('ended', () => {
+    if (optOn('videoOnce')) { openSeries(si); return; }
     if (ep < cur().count) play(ep + 1);
     else openSeries(si);
   });
 
   return {
     async enter() {
+      paintToggles();
       if (!series.length) series = await loadList();
       // 편수는 열 때마다 다시 센다 (영상을 더 넣으면 바로 보이게)
       await Promise.all(series.map(async (s) => { s.count = s.count || await countEpisodes(s.name); }));
@@ -259,6 +294,12 @@ export function initVideo({ goHome }) {
       try { at = JSON.parse(localStorage.getItem(AT_KEY) || 'null'); } catch { /* 무시 */ }
       const k = at ? series.findIndex(s => s.name === at.name) : -1;
       openSeries(k >= 0 ? k : 0);                     // 고르기 전까지는 틀지 않는다
+      /* 자동 재생(설정에서 켠다) — 마지막에 보던 편을 바로 이어 튼다.
+         기본이 꺼짐인 이유: 무엇을 볼지 고르는 것부터가 이 화면의 일이다.
+         소리는 사파리가 막을 수 있다 (카드를 누른 제스처가 목록을 읽는
+         동안 끊긴다) — 그때는 재생 버튼이 남으니 play() 의 catch 로 족하다. */
+      if (optOn('videoAuto') && k >= 0 && at.ep >= 1 && at.ep <= series[k].count)
+        play(at.ep);
     }
   };
 }

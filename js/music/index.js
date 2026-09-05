@@ -29,6 +29,7 @@
 
 import { sfx } from '../core/audio.js';
 import { icon } from '../core/icons.js';
+import { optOn, setOpt } from '../core/opts.js';
 
 const BASE = 'https://stepersjmj.synology.me:28443/mjimage/upload/music/';
 const AT_KEY = 'haichu.musicAt';               // 마지막에 들은 곡
@@ -76,7 +77,7 @@ function coverFromVideo(src, onReady) {
   v.src = src + '#t=3';
 }
 
-export function initMusic({ goHome }) {
+export function initMusic({ toast, goHome }) {
   const $ = (id) => document.getElementById(id);
   const player = $('music-player'), empty = $('music-empty'), strip = $('music-strip');
   const topTray = strip.closest('.tray');
@@ -87,11 +88,14 @@ export function initMusic({ goHome }) {
     catch { /* 사파리 사생활 모드 */ }
   }
 
-  /** 한 곡을 튼다 (칩을 눌렀을 때만) */
+  /** 한 곡을 튼다 (칩을 눌렀을 때, 또는 자동 재생일 때) */
   function play(i) {
     mi = i;
     player.hidden = false;
     empty.hidden = true;
+    // 반복 듣기는 <video loop> 에 맡긴다 — 다시 받아 오지 않아 끊김이 없다
+    // (이때는 ended 가 아예 안 울린다).
+    player.loop = optOn('musicLoop');
     player.src = url(songs[i]);
     player.play().catch(() => { /* 자동재생을 막으면 재생 버튼으로 */ });
     $('music-name').textContent = songs[i].name;
@@ -119,14 +123,55 @@ export function initMusic({ goHome }) {
 
   const stop = () => { player.pause(); player.removeAttribute('src'); };
 
+  /** 다 듣고 멈춘다 — 다시 고를 수 있게 목록 화면으로 돌아간다 */
+  function stopToList() {
+    stop();
+    player.hidden = true;
+    empty.hidden = false;
+    empty.textContent = '무슨 노래를 들을까요?';
+  }
+
+  /* ── 재생 방식 버튼 (하단) — 영상 보기와 같은 얼개 ─────────
+     설정 시트가 아니라 이 화면 아래에 둔다. 반복과 한 번만은 서로
+     배타적이고(opts.js 의 group), 켠 순간 듣고 있는 곡에 바로 반영된다. */
+  const TOGGLES = [
+    ['btn-music-auto', 'musicAuto', '자동 재생 — 들어오면 바로 이어서 틀어요'],
+    ['btn-music-loop', 'musicLoop', '반복 — 끝나면 같은 노래를 다시 틀어요'],
+    ['btn-music-once', 'musicOnce', '한 번만 — 끝나면 멈춰요']
+  ];
+  function paintToggles() {
+    for (const [id, opt] of TOGGLES) {
+      const b = $(id);
+      b.classList.toggle('is-on', optOn(opt));
+      b.setAttribute('aria-pressed', String(optOn(opt)));
+    }
+  }
+  for (const [id, opt, msg] of TOGGLES) {
+    $(id).addEventListener('click', () => {
+      sfx.tap();
+      const on = !optOn(opt);
+      setOpt(opt, on);
+      paintToggles();
+      player.loop = optOn('musicLoop');          // 지금 듣고 있는 곡에 바로
+      toast(on ? msg : '껐어요');
+    });
+  }
+
   $('btn-music-home').addEventListener('click', () => { stop(); goHome(); });
   $('btn-music-prev').addEventListener('click', () => { sfx.tap(); play(mi - 1); });
   $('btn-music-next').addEventListener('click', () => { sfx.tap(); play(mi + 1); });
-  // 한 곡이 끝나면 다음 곡으로 (마지막 곡이면 그냥 멈춘다)
-  player.addEventListener('ended', () => { if (mi < songs.length - 1) play(mi + 1); });
+  /* 한 곡이 끝나면 — 기본은 다음 곡으로, 마지막 곡이면 멈춘다.
+     설정에서 "한 번만 듣기" 를 켜면 한 곡으로 끝난다.
+     "반복 듣기" 는 player.loop 라 여기까지 오지도 않는다. */
+  player.addEventListener('ended', () => {
+    if (optOn('musicOnce')) { stopToList(); return; }
+    if (mi < songs.length - 1) play(mi + 1);
+    else stopToList();
+  });
 
   return {
     async enter() {
+      paintToggles();
       // 열 때마다 목록을 다시 읽는다 — 노래를 더 넣었는데 안 보이면 안 된다
       songs = await loadList();
       stop();
@@ -154,6 +199,10 @@ export function initMusic({ goHome }) {
       if (k >= 0) strip.children[k]?.classList.add('is-on');
       $('btn-music-prev').disabled = true;
       $('btn-music-next').disabled = true;
+      /* 자동 재생(설정에서 켠다) — 마지막에 듣던 곡을 바로 이어 튼다.
+         기본이 꺼짐인 이유: 무슨 노래를 들을지 고르는 것부터가 이 화면의
+         일이다. 소리를 사파리가 막으면 재생 버튼이 남는다(play 의 catch). */
+      if (optOn('musicAuto') && k >= 0) play(k);
     }
   };
 }

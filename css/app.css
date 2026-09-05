@@ -149,6 +149,9 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .overlay .panel{
   background:#fffdf7;border-radius:28px;padding:32px 36px;
   width:560px;max-width:90vw;
+  /* 설정 스위치가 늘어나면 아이패드 세로에서 패널이 화면 밖으로 나간다.
+     안쪽만 굴러가게 둔다 (바깥을 눌러 닫는 동작은 그대로). */
+  max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch;
   box-shadow:0 24px 60px rgba(58,47,34,.35);
 }
 .panel-head{display:flex;align-items:center;gap:12px}
@@ -249,6 +252,12 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 }
 .rbtn.wide{width:auto;padding:0 20px;font-size:18px;font-weight:800;gap:10px}
 .rbtn:active{background:var(--sel-bg);border-color:var(--sel-br)}
+/* 켜고 끄는 트레이 버튼 (미로 자석 · 영상/노래 재생 방식).
+   선택 표시는 앱 전체 규칙(--sel-bg/--sel-br)을 그대로 쓰고,
+   꺼져 있을 때는 홈의 소리 버튼처럼 흐려진다 — 누르는 버튼이 아니라
+   "지금 켜져 있나" 를 보여 주는 자리라서 상태가 한눈에 보여야 한다. */
+.rbtn.tgl.is-on{background:var(--sel-bg);border-color:var(--sel-br)}
+.rbtn.tgl:not(.is-on) svg{opacity:.35}
 .rbtn[disabled]{opacity:.3}
 .rbtn svg,.rbtn b{position:relative;z-index:1}
 .rbtn b{font-weight:800}
@@ -439,6 +448,8 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
   text-align:left;transition:background .14s,border-color .14s;
 }
 .opt-card.is-on{background:var(--sel-bg);border-color:var(--sel-br)}
+/* 같은 갈래의 스위치는 붙여 쌓는다 (영상: 보이기·자동·반복·한 번만) */
+.opt-card + .opt-card{margin-top:10px}
 .opt-text{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0}
 .opt-card .nm{font-size:20px;font-weight:800}
 .opt-card .desc{font-size:13px;font-weight:700;opacity:.55}

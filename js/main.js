@@ -12,6 +12,7 @@ import { initSpot } from './spot/index.js';
 import { initCount } from './count/index.js';
 import { unlock, sfx, setMuted, isMuted, audioState, say } from './core/audio.js';
 import { INTRO } from './core/intros.js';
+import { OPT_IDS, optOn, toggleOpt } from './core/opts.js';
 import { works } from './core/store.js';
 import { icon, arrow, toolIcon, ACT_ICON } from './core/icons.js';
 
@@ -73,11 +74,10 @@ const ACTIVITIES = [
 ];
 
 /* ── 숨김 기능 (영상 보기 · 노래 듣기) ────────────────────
-   기본은 꺼짐. 설정에서 켜야 홈 "창작" 갈래에 카드가 나타난다.
-   활동마다 열쇠가 따로라 노래만 켜 둘 수도 있다.
-   ★ buildHome() 이 이걸 부르므로 **홈보다 먼저** 선언돼야 한다. */
-const HIDDEN_KEY = { video: 'haichu.video', music: 'haichu.music' };
-const shownOn = (id) => localStorage.getItem(HIDDEN_KEY[id]) === 'on';
+   기본은 꺼짐. 설정의 "미디어 보기" 를 켜야 홈 "창작" 갈래에 두 카드가
+   나타난다 — 부모에게는 "미디어를 보여 줄까 말까" 한 가지 결정이라
+   스위치도 하나다. 열쇠와 기본값은 core/opts.js 한곳에 있다. */
+const shownOn = () => optOn('media');
 
 /* ── 화면 전환 ─────────────────────────────────────────────
    따라 그리기류 다섯(선 긋기·한글·숫자·미로·점 잇기)은 화면이 같아서
@@ -108,7 +108,7 @@ function buildHome() {
   const wrap = $('activity-groups');
   wrap.innerHTML = '';
   for (const g of GROUPS) {
-    const items = ACTIVITIES.filter(a => a.group === g.id && (!a.hidden || shownOn(a.id)));
+    const items = ACTIVITIES.filter(a => a.group === g.id && (!a.hidden || shownOn()));
     if (!items.length) continue;
 
     const box = document.createElement('div');
@@ -209,8 +209,8 @@ const ACTIVITY_APPS = {
   puzzle: initPuzzle({ toast, goHome }),
   spot: initSpot({ toast, goHome }),
   count: initCount({ toast, goHome }),
-  video: initVideo({ goHome }),
-  music: initMusic({ goHome }),
+  video: initVideo({ toast, goHome }),
+  music: initMusic({ toast, goHome }),
   sort: initSort({ toast, goHome })
 };
 
@@ -260,22 +260,25 @@ for (const [id, nm, desc] of [['hand-left', '왼손', '왼쪽에 손을 얹어�
 }
 applyHand();
 
-/* 숨김 기능 토글(영상 보기·노래 듣기) — 둘이 같은 코드를 쓴다.
-   그리기 앱에 영상·노래가 늘 보이면 아이가 그것만 찾는다. 부모가 여는 자리다. */
-function applyHidden(id) {
+/* 설정 스위치 — 카드에 data-opt="<id>" 만 달면 여기서 전부 배선한다.
+   (숨김 활동 보이기 · 미로 자석 · 영상/노래의 자동재생·반복·한 번만)
+   값과 기본값은 core/opts.js 에 있고, 배타적인 짝(반복 ↔ 한 번만)은
+   setOpt 이 알아서 상대를 꺼 준다 — 그래서 바뀐 카드를 다시 칠한다. */
+function paintOpt(id) {
   const b = $('opt-' + id);
-  b.classList.toggle('is-on', shownOn(id));
-  b.setAttribute('aria-pressed', String(shownOn(id)));
+  if (!b) return;
+  b.classList.toggle('is-on', optOn(id));
+  b.setAttribute('aria-pressed', String(optOn(id)));
 }
-for (const id of Object.keys(HIDDEN_KEY)) {
-  $('opt-' + id).addEventListener('click', () => {
-    localStorage.setItem(HIDDEN_KEY[id], shownOn(id) ? 'off' : 'on');
-    applyHidden(id);
-    buildHome();                     // 카드가 바로 나타나거나 사라진다
+for (const card of document.querySelectorAll('[data-opt]')) {
+  const id = card.dataset.opt;
+  card.addEventListener('click', () => {
+    for (const k of toggleOpt(id)) paintOpt(k);
+    if (id === 'media') buildHome();     // 카드 둘이 함께 나타나거나 사라진다
     sfx.tap();
   });
-  applyHidden(id);
 }
+for (const id of OPT_IDS) paintOpt(id);
 
 $('btn-settings').addEventListener('click', () => { sfx.tap(); $('sheet-settings').hidden = false; });
 $('btn-settings-close').addEventListener('click', () => { $('sheet-settings').hidden = true; });
@@ -311,7 +314,7 @@ if (!window.matchMedia('(display-mode: standalone)').matches && !navigator.stand
    **캐시 번호(sw.js)는 파일이 바뀔 때마다 오른다**. 화면이 실제로 새 파일을
    받았는지 가리는 건 뒤엣것이라, 하나로 합치면 오타 하나 고칠 때도 릴리스를
    올려야 하거나(번거롭다) 캐시가 안 바뀌어 옛 화면이 남는다(겪은 함정). */
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 fetch('sw.js').then(r => r.text()).then(t => {
   const m = /VERSION = '([^']+)'/.exec(t);
   const tag = APP_VERSION + (m ? ' · ' + m[1] : '');

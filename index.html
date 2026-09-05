@@ -118,6 +118,10 @@
     <button data-icon="home" class="rbtn" id="btn-trace-home" type="button"></button>
     <button data-icon="undo" class="rbtn" id="btn-trace-again" type="button"></button>
     <button data-icon="say" class="rbtn" id="btn-trace-say" type="button" hidden></button>
+    <!-- 자석 — 미로에서만 나온다. 켜면 길에서 벗어나도 조용하고,
+         끄면 지나간 길이 남고 막다른 길에서 떼면 삐빅 + ✗ -->
+    <button data-icon="magnet" class="rbtn tgl" id="btn-trace-magnet" type="button"
+            aria-pressed="true" aria-label="자석" hidden></button>
     <div class="spacer"></div>
     <button data-icon="prev" class="rbtn" id="btn-trace-prev" type="button"></button>
     <span class="lvl-name" id="trace-name"></span>
@@ -221,23 +225,16 @@
     </div>
     <p class="panel-note">그리는 화면에서는 손 반대쪽에 버튼을 모아, 손바닥이 닿아도 눌리지 않아요.</p>
 
-    <p class="panel-q">영상 보기</p>
-    <button class="opt-card" id="opt-video" type="button" aria-pressed="false">
+    <p class="panel-q">미디어 보기</p>
+    <button class="opt-card" id="opt-media" data-opt="media" type="button" aria-pressed="false">
       <span class="opt-text">
         <span class="nm">홈에 보이기</span>
-        <span class="desc">꺼 두면 홈에서 사라져요</span>
+        <span class="desc">영상 보기·노래 듣기 카드가 홈에 나와요</span>
       </span>
       <span class="switch" aria-hidden="true"><i></i></span>
     </button>
-
-    <p class="panel-q">노래 듣기</p>
-    <button class="opt-card" id="opt-music" type="button" aria-pressed="false">
-      <span class="opt-text">
-        <span class="nm">홈에 보이기</span>
-        <span class="desc">꺼 두면 홈에서 사라져요</span>
-      </span>
-      <span class="switch" aria-hidden="true"><i></i></span>
-    </button>
+    <p class="panel-note">재생 방식(자동 재생·반복·한 번만)과 미로 자석은
+      그 화면 아래쪽 버튼에 있어요.</p>
   </div>
 </div>
 
@@ -285,6 +282,13 @@
 
   <div class="tray tray-bottom">
     <button data-icon="home" class="rbtn" id="btn-video-home" type="button"></button>
+    <!-- 재생 방식 — 자동 재생 · 반복 · 한 번만 (반복과 한 번만은 서로 배타) -->
+    <button data-icon="auto" class="rbtn tgl" id="btn-video-auto" type="button"
+            aria-pressed="false" aria-label="자동 재생"></button>
+    <button data-icon="loop" class="rbtn tgl" id="btn-video-loop" type="button"
+            aria-pressed="false" aria-label="반복 보기"></button>
+    <button data-icon="once" class="rbtn tgl" id="btn-video-once" type="button"
+            aria-pressed="false" aria-label="한 번만 보기"></button>
     <div class="spacer"></div>
     <button data-icon="prev" class="rbtn" id="btn-video-prev" type="button"
             aria-label="이전 시리즈"></button>
@@ -312,6 +316,13 @@
 
   <div class="tray tray-bottom">
     <button data-icon="home" class="rbtn" id="btn-music-home" type="button"></button>
+    <!-- 재생 방식 — 자동 재생 · 반복 · 한 번만 (반복과 한 번만은 서로 배타) -->
+    <button data-icon="auto" class="rbtn tgl" id="btn-music-auto" type="button"
+            aria-pressed="false" aria-label="자동 재생"></button>
+    <button data-icon="loop" class="rbtn tgl" id="btn-music-loop" type="button"
+            aria-pressed="false" aria-label="반복 듣기"></button>
+    <button data-icon="once" class="rbtn tgl" id="btn-music-once" type="button"
+            aria-pressed="false" aria-label="한 번만 듣기"></button>
     <div class="spacer"></div>
     <button data-icon="prev" class="rbtn" id="btn-music-prev" type="button"
             aria-label="이전 노래"></button>
