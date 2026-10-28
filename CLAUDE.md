@@ -23,6 +23,7 @@ index.html                앱 셸(홈 / 색칠 / 따라 그리기류 / 조각 �
 css/app.css               전부. 터치 타겟은 --tap 변수로 통일
 manifest.webmanifest      홈 화면 추가용
 sw.js                     오프라인 캐시 (네트워크 우선)
+서버 켜기.bat             윈도우에서 더블클릭으로 서버 + 브라우저 (BOM 없는 UTF-8 + CRLF)
 js/
   main.js                 화면 전환, 홈 목록(=로드맵), 갤러리, PWA 등록
   core/
@@ -72,7 +73,9 @@ js/
     index.js              다른 그림 찾기: 두 그림판, 동그라미 표시, UI 배선
     scenes.js             장면 8종(우리 집·바닷속·밤하늘·농장·놀이터·생일·기차·겨울) × 난이도 3 = 24문제
     judge.js              동그라미/콕 찍기 판정 — 화면과 자가 점검이 같이 쓴다
-assets/icon-*.png         tools/make-icons.mjs 로 생성 (직접 편집하지 말 것)
+assets/icon-*.png         홈 화면·바로가기 아이콘 7종 (32·120·152·167·180·192·512)
+assets/og.png             링크 미리보기용 1200×630
+                          둘 다 tools/make-icons.mjs 로 생성 (직접 편집하지 말 것)
 assets/voice/             음성 팩 (클립 169개 + manifest) — make-voice.mjs 로 생성
 tools/serve.mjs           개발용 정적 서버 (윈도우/맥 공통, LAN 주소 출력)
 tools/make-icons.mjs      아이콘 생성기 (외부 패키지 없이 PNG 직접 인코딩)
@@ -241,6 +244,13 @@ node tools/serve.mjs
 ```
 
 `.claude/launch.json` 에 `baby` 로 등록돼 있어 preview_start 로도 뜬다.
+윈도우에서는 **`서버 켜기.bat`** 더블클릭 — 서버를 띄우고 2초 뒤 브라우저를 연다
+(인자로 포트를 받는다. 기본 8123).
+- **이 .bat 은 BOM 없는 UTF-8 + CRLF 여야 한다.** LF 로 저장하면 cmd 가 한글 줄에서
+  파싱이 어긋나 `'...니다.' is not recognized` 가 쏟아지고, BOM 을 붙이면 첫 줄
+  `@echo off` 가 BOM 째 명령으로 읽혀 echo 가 안 꺼진다. 둘 다 실제로 밟았다.
+- 대기에 `timeout` 대신 `ping -n 3` 을 쓰는 이유 — `timeout` 은 표준입력이
+  리다이렉트된 환경에서 "Input redirection is not supported" 로 죽는다.
 
 파이썬 대신 노드로 서버를 띄우는 이유는 세 가지다. **macOS 12.3 부터 `python` 명령이 없고**
 (`python3` 뿐이라 launch.json 이 윈도우/맥에서 갈린다), ES 모듈은 `.js` 의 Content-Type 이
@@ -874,6 +884,20 @@ NUMBERS.forEach((L,i) => { const ox=(i%5)*190, oy=Math.floor(i/5)*190, s=0.166;
   팡파르가 22번 울려서 알았다.)
 - **`getImageData` 는 비싸다.** 밑그림 알파(물감통 벽)는 밑그림을 그릴 때 한 번만 뽑아 캐시한다.
 - 아이콘을 바꾸려면 `tools/make-icons.mjs` 를 고치고 `node tools/make-icons.mjs`.
+  `render(W, H, S)` 가 정사각 아이콘 7종과 og 이미지(1200×630)를 한 벌로 만든다 —
+  그림 비율이 전부 `S` 기준이라 넓은 화면에도 같은 코드가 그려진다.
+- **바로가기 아이콘은 투명 배경이면 안 된다.** 네이버 앱 바로가기나 사파리
+  "홈 화면에 추가" 는 favicon 이 아니라 `apple-touch-icon`·매니페스트의 **큰 정사각
+  불투명** 아이콘을 찾고, 못 찾으면 **제목 첫 글자 아이콘**으로 떨어뜨린다.
+  생성기가 알파를 전부 255 로 찍는 이유 — 투명하게 고치지 말 것.
+  - 크기별 `sizes` 링크(120·152·167·180)와 `apple-touch-icon-precomposed` 는
+    크기를 보고 고르는 수집기와 그 이름만 찾는 구형 수집기를 위한 것이다.
+  - **`og:image` 는 절대 주소여야 한다** — 상대 주소는 카카오·네이버 수집기가
+    못 받아 온다. 그래서 `index.html` 에 배포 주소가 박혀 있다
+    (주소가 바뀌면 og 태그 4줄도 같이 고칠 것).
+  - **아이콘을 바꿨으면 기기에서 바로가기를 지우고 다시 추가해야 한다.**
+    바로가기는 만들 때 아이콘을 한 번 가져가 제 것으로 들고 있어서, 서버 파일만
+    바꿔서는 안 바뀐다.
 
 ## 버전 두 가지
 

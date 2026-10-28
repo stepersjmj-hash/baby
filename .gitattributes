@@ -1,0 +1,3 @@
+# .bat 은 CRLF 여야 한다 — LF 면 cmd 가 한글 줄에서 파싱이 어긋난다.
+# (autocrlf 설정이 어떻든 체크아웃 때 CRLF 로 내려오게 못박는다)
+*.bat text eol=crlf

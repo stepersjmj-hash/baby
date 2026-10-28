@@ -10,8 +10,32 @@
 <meta name="apple-mobile-web-app-title" content="하이츄">
 <title>하이츄 — 하이의 놀이터</title>
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="assets/icon-180.png">
-<link rel="icon" href="assets/icon-192.png">
+
+<!-- 홈 화면·바로가기 아이콘.
+     네이버 앱 바로가기와 사파리 "홈 화면에 추가" 는 favicon 이 아니라
+     apple-touch-icon / 매니페스트의 큰 정사각 아이콘을 찾는다 — 못 찾으면
+     제목 첫 글자로 된 아이콘으로 떨어진다. 크기별로 적어 두는 건 크기를
+     보고 고르는 수집기(네이버·카카오)를 위한 것이고, precomposed 는 그
+     이름만 찾는 구형 수집기용 폴백이다. -->
+<link rel="apple-touch-icon" sizes="180x180" href="assets/icon-180.png">
+<link rel="apple-touch-icon" sizes="167x167" href="assets/icon-167.png">
+<link rel="apple-touch-icon" sizes="152x152" href="assets/icon-152.png">
+<link rel="apple-touch-icon" sizes="120x120" href="assets/icon-120.png">
+<link rel="apple-touch-icon-precomposed" href="assets/icon-180.png">
+<link rel="icon" sizes="192x192" href="assets/icon-192.png">
+<link rel="icon" sizes="32x32" href="assets/icon-32.png">
+<link rel="shortcut icon" href="assets/icon-192.png">
+
+<!-- 링크 미리보기 (카카오톡·네이버 공유). og:image 는 절대 주소여야 한다 —
+     상대 주소는 수집기가 못 받아 오는 일이 잦다. -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="하이츄 — 하이의 놀이터">
+<meta property="og:description" content="3~6세 아이를 위한 펜 놀이 앱">
+<meta property="og:url" content="https://stepersjmj-hash.github.io/baby/">
+<meta property="og:image" content="https://stepersjmj-hash.github.io/baby/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
 <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
