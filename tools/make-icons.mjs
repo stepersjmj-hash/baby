@@ -58,96 +58,119 @@ const BG = hex('#ffcf7a');
 const PALETTE = hex('#fffaf0');
 const DOTS = ['#ff4d4d', '#ff9f2e', '#ffe14d', '#4fd06b', '#4a90ff', '#a06bff'].map(hex);
 
-/* W×H 화면 가운데에 한 변 S 짜리 아이콘을 그린다.
-   정사각 아이콘은 W=H=S, 넓은 og 이미지는 S 를 따로 준다 —
-   그림 비율(rPal·rDot 따위)은 전부 S 기준이라 한 벌로 양쪽을 만든다. */
-function render(W, H = W, S = Math.min(W, H)) {
+/* 아이콘 기하 — 전부 팔레트 반지름(rPal) 기준 비율이다.
+   그래야 파비콘(팔레트가 캔버스를 꽉 채움)과 홈 화면 타일(72%)이 같은 그림이 된다. */
+const G = { hole: 0.239, holeOff: 0.437, dot: 0.175, ring: 0.586 };
+
+/* 한 변 size 의 정사각 아이콘.
+     frac — 팔레트 지름 / 캔버스 변. 1 이면 꽉 차고, 0.71 이면 여백이 남는다
+            (안드로이드 마스커블 안전영역 80% 안).
+     bg   — 배경색. null 이면 투명 (파비콘용).
+   ★ 홈 화면 타일은 bg 가 있어야 한다 — 투명하면 iOS 가 검게 채운다. */
+function render(size, frac = 0.71, bg = BG) {
+  const W = size, H = size;
   const buf = Buffer.alloc(W * H * 4);
   const cx = W / 2, cy = H / 2;
-  const rPal = S * 0.355;                 // 팔레트 반지름
-  const rHole = S * 0.085;                // 엄지 구멍
-  const holeX = cx + S * 0.155, holeY = cy + S * 0.155;
-  const rDot = S * 0.062;
+  const rPal = size * frac / 2;           // 팔레트 반지름
+  const rHole = rPal * G.hole;            // 엄지 구멍
+  const holeX = cx + rPal * G.holeOff, holeY = cy + rPal * G.holeOff;
+  const rDot = rPal * G.dot;
   // 엄지 구멍(오른쪽 아래 45°)을 피해 왼쪽 아래 → 위 → 오른쪽으로 호를 그린다
   const dots = DOTS.map((c, i) => {
     const a = -Math.PI * 1.06 + i * (Math.PI * 1.12 / (DOTS.length - 1));
-    return { x: cx + Math.cos(a) * S * 0.208, y: cy + Math.sin(a) * S * 0.208, c };
+    return { x: cx + Math.cos(a) * rPal * G.ring, y: cy + Math.sin(a) * rPal * G.ring, c };
   });
 
   // 안티에일리어싱: 픽셀당 3×3 슈퍼샘플
   const SS = 3, inv = 1 / (SS * SS);
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
-      let r = 0, g = 0, b = 0;
+      let r = 0, g = 0, b = 0, a = 0;
       for (let sy = 0; sy < SS; sy++) for (let sx = 0; sx < SS; sx++) {
         const px = x + (sx + 0.5) / SS, py = y + (sy + 0.5) / SS;
-        let col = BG;
+        let col = bg, op = bg ? 255 : 0;   // 배경이 null 이면 그 자리는 투명
         const dPal = Math.hypot(px - cx, py - cy);
         if (dPal <= rPal && Math.hypot(px - holeX, py - holeY) > rHole) {
-          col = PALETTE;
+          col = PALETTE; op = 255;
           for (const d of dots) {
             if (Math.hypot(px - d.x, py - d.y) <= rDot) { col = d.c; break; }
           }
         }
-        r += col[0]; g += col[1]; b += col[2];
+        if (col) { r += col[0]; g += col[1]; b += col[2]; }
+        a += op;
       }
       const o = (y * W + x) * 4;
       buf[o] = Math.round(r * inv); buf[o + 1] = Math.round(g * inv);
-      buf[o + 2] = Math.round(b * inv); buf[o + 3] = 255;
+      buf[o + 2] = Math.round(b * inv); buf[o + 3] = Math.round(a * inv);
     }
   }
   return encodePNG(W, H, buf);
 }
 
-mkdirSync(join(ROOT, 'assets'), { recursive: true });
+/* ── 내보내기 ──────────────────────────────────────────────
+   파일 이름·자리는 checkspeed 저장소에서 실제로 네이버 바로가기가 먹힌
+   구성을 그대로 따랐다. 두 가지가 핵심이다:
 
-/* 정사각 아이콘.
-   180 은 아이폰·아이패드 홈 화면, 192·512 는 매니페스트(안드로이드·네이버 앱),
-   120·152·167 은 구형 iOS 와 아이콘을 크기별로 고르는 수집기, 32 는 브라우저 탭.
-   전부 알파 255 (불투명) 다 — 투명 아이콘은 네이버 앱·사파리가 "첫 글자 아이콘"
-   으로 떨어뜨린다. */
-for (const size of [32, 120, 152, 167, 180, 192, 512]) {
-  const file = join(ROOT, 'assets', `icon-${size}.png`);
-  writeFileSync(file, render(size));
-  console.log('wrote', file);
-}
+   ① **전부 저장소 루트에 실제 파일로** 둔다. 수집기는 data URI 를 못 가져가고,
+      경로는 `<link>` 의 상대 주소로만 찾는다.
+   ② **경로를 절대/루트 기준으로 쓰지 말 것.** 이 사이트는 도메인 루트가 아니라
+      `/baby/` 아래에 있어서 `/favicon.ico` 는 stepersjmj-hash.github.io/favicon.ico
+      를 가리켜 깨진다. 같은 이유로 "루트 favicon.ico 폴백" 은 쓸 수 없다.
 
-/* 링크 미리보기용 og 이미지 (카카오톡·네이버 공유).
-   정사각 아이콘을 og:image 로 주면 수집기가 양옆을 잘라 내므로 1200×630 을 따로 만든다. */
+   파비콘은 배경 투명 + 팔레트가 캔버스를 꽉 채우고(frac 1),
+   홈 화면 타일은 불투명 크림 배경 + 팔레트 71%(마스커블 안전영역 80% 안)다. */
+
+/* 파비콘 — 투명, 꽉 차게 */
+writeFileSync(join(ROOT, 'favicon-96.png'), render(96, 1, null));
+console.log('wrote favicon-96.png');
+
+/* favicon.ico — 16·32·48 을 한 파일에. ICO 는 PNG 를 그대로 품을 수 있다.
+   ICONDIR 6바이트 + ICONDIRENTRY 16바이트 × n + PNG 본문들. */
 {
-  const file = join(ROOT, 'assets', 'og.png');
-  writeFileSync(file, render(1200, 630, Math.round(630 * 0.78)));
-  console.log('wrote', file);
-}
-
-/* ── 관례 파일명 폴백 (저장소 루트) ──────────────────────────
-   HTML 을 파싱해 <link> 를 읽는 대신 정해진 이름을 그냥 찍어 보는 수집기가 있다
-   (네이버 앱 바로가기처럼). 그래서 같은 그림을 관례 이름으로도 둔다.
-   ★ 이건 배포 경로(/baby/) 기준이다 — origin 루트(stepersjmj-hash.github.io/)
-     를 찍어 보는 수집기에는 소용이 없다. 프로젝트 페이지는 origin 루트에
-     파일을 둘 수 없기 때문이고, 그걸 고치려면 커스텀 도메인이 필요하다. */
-for (const name of ['apple-touch-icon.png', 'apple-touch-icon-precomposed.png']) {
-  const file = join(ROOT, name);
-  writeFileSync(file, render(180));
-  console.log('wrote', file);
-}
-
-/* favicon.ico — ICO 는 PNG 를 그대로 품을 수 있다 (Vista 이후 표준).
-   ICONDIR 6바이트 + ICONDIRENTRY 16바이트 + PNG 본문. */
-{
-  const png = render(32);
+  const pngs = [16, 32, 48].map((n) => ({ n, png: render(n, 1, null) }));
   const dir = Buffer.alloc(6);
-  dir.writeUInt16LE(0, 0);            // reserved
-  dir.writeUInt16LE(1, 2);            // type: 1 = icon
-  dir.writeUInt16LE(1, 4);            // 이미지 1장
-  const ent = Buffer.alloc(16);
-  ent[0] = 32; ent[1] = 32;           // 가로·세로 (0 이면 256)
-  ent[2] = 0; ent[3] = 0;             // 팔레트 색 수 · reserved
-  ent.writeUInt16LE(1, 4);            // planes
-  ent.writeUInt16LE(32, 6);           // bit depth
-  ent.writeUInt32LE(png.length, 8);   // 본문 길이
-  ent.writeUInt32LE(6 + 16, 12);      // 본문 오프셋
-  const file = join(ROOT, 'favicon.ico');
-  writeFileSync(file, Buffer.concat([dir, ent, png]));
-  console.log('wrote', file);
+  dir.writeUInt16LE(0, 0);                    // reserved
+  dir.writeUInt16LE(1, 2);                    // type: 1 = icon
+  dir.writeUInt16LE(pngs.length, 4);
+  let off = 6 + 16 * pngs.length;             // 첫 본문 오프셋
+  const ents = [], bodies = [];
+  for (const { n, png } of pngs) {
+    const e = Buffer.alloc(16);
+    e[0] = n; e[1] = n;                       // 가로·세로 (0 이면 256)
+    e[2] = 0; e[3] = 0;                       // 팔레트 색 수 · reserved
+    e.writeUInt16LE(1, 4);                    // planes
+    e.writeUInt16LE(32, 6);                   // bit depth
+    e.writeUInt32LE(png.length, 8);
+    e.writeUInt32LE(off, 12);
+    off += png.length;
+    ents.push(e); bodies.push(png);
+  }
+  writeFileSync(join(ROOT, 'favicon.ico'), Buffer.concat([dir, ...ents, ...bodies]));
+  console.log('wrote favicon.ico (16·32·48)');
+}
+
+/* 홈 화면·바로가기 타일 — 불투명 크림 배경 */
+writeFileSync(join(ROOT, 'apple-touch-icon.png'), render(180));
+writeFileSync(join(ROOT, 'icon-192.png'), render(192));
+writeFileSync(join(ROOT, 'icon-512.png'), render(512));
+console.log('wrote apple-touch-icon.png · icon-192.png · icon-512.png');
+
+/* SVG — 탭에서 어느 배율에도 선명하게. 파비콘과 같은 그림(투명·꽉 참)이다.
+   엄지 구멍은 evenodd 로 진짜 구멍을 뚫는다 (배경색으로 덮으면 투명 위에서 티가 난다). */
+{
+  const R = 16, cx = 16, cy = 16;             // viewBox 32
+  const n = (v) => Number(v.toFixed(2));
+  const ring = R * G.ring, rDot = R * G.dot;
+  const hx = n(cx + R * G.holeOff), hy = n(cy + R * G.holeOff), hr = n(R * G.hole);
+  const circle = (x, y, r) => `M${n(x - r)} ${n(y)}a${n(r)} ${n(r)} 0 1 0 ${n(r * 2)} 0a${n(r)} ${n(r)} 0 1 0 ${n(-r * 2)} 0`;
+  const dots = ['#ff4d4d', '#ff9f2e', '#ffe14d', '#4fd06b', '#4a90ff', '#a06bff'].map((c, i) => {
+    const a = -Math.PI * 1.06 + i * (Math.PI * 1.12 / 5);
+    return `<circle cx='${n(cx + Math.cos(a) * ring)}' cy='${n(cy + Math.sin(a) * ring)}' r='${n(rDot)}' fill='${c}'/>`;
+  }).join('');
+  writeFileSync(join(ROOT, 'icon.svg'),
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'>"
+    + `<path d='${circle(cx, cy, R)}${circle(hx, hy, hr)}' fill='#fffaf0' fill-rule='evenodd'/>`
+    + dots
+    + '</svg>\n', 'utf-8');
+  console.log('wrote icon.svg');
 }

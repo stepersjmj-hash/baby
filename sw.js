@@ -6,7 +6,7 @@
      예전 캐시를 계속 쓴다 (가장 자주 겪는 함정).
    ============================================================ */
 
-const VERSION = 'v54';
+const VERSION = 'v55';
 const CACHE = `ainori-${VERSION}`;
 
 const SHELL = [
@@ -51,16 +51,12 @@ const SHELL = [
   './js/count/index.js',
   './js/count/levels.js',
   './assets/voice/manifest.json',
-  './assets/icon-32.png',
-  './assets/icon-120.png',
-  './assets/icon-152.png',
-  './assets/icon-167.png',
-  './assets/icon-180.png',
-  './assets/icon-192.png',
-  './assets/icon-512.png',
-  './assets/og.png',
   './favicon.ico',
-  './apple-touch-icon.png'
+  './favicon-96.png',
+  './icon.svg',
+  './apple-touch-icon.png',
+  './icon-192.png',
+  './icon-512.png'
 ];
 
 self.addEventListener('install', (e) => {
