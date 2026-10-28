@@ -119,3 +119,35 @@ for (const size of [32, 120, 152, 167, 180, 192, 512]) {
   writeFileSync(file, render(1200, 630, Math.round(630 * 0.78)));
   console.log('wrote', file);
 }
+
+/* ── 관례 파일명 폴백 (저장소 루트) ──────────────────────────
+   HTML 을 파싱해 <link> 를 읽는 대신 정해진 이름을 그냥 찍어 보는 수집기가 있다
+   (네이버 앱 바로가기처럼). 그래서 같은 그림을 관례 이름으로도 둔다.
+   ★ 이건 배포 경로(/baby/) 기준이다 — origin 루트(stepersjmj-hash.github.io/)
+     를 찍어 보는 수집기에는 소용이 없다. 프로젝트 페이지는 origin 루트에
+     파일을 둘 수 없기 때문이고, 그걸 고치려면 커스텀 도메인이 필요하다. */
+for (const name of ['apple-touch-icon.png', 'apple-touch-icon-precomposed.png']) {
+  const file = join(ROOT, name);
+  writeFileSync(file, render(180));
+  console.log('wrote', file);
+}
+
+/* favicon.ico — ICO 는 PNG 를 그대로 품을 수 있다 (Vista 이후 표준).
+   ICONDIR 6바이트 + ICONDIRENTRY 16바이트 + PNG 본문. */
+{
+  const png = render(32);
+  const dir = Buffer.alloc(6);
+  dir.writeUInt16LE(0, 0);            // reserved
+  dir.writeUInt16LE(1, 2);            // type: 1 = icon
+  dir.writeUInt16LE(1, 4);            // 이미지 1장
+  const ent = Buffer.alloc(16);
+  ent[0] = 32; ent[1] = 32;           // 가로·세로 (0 이면 256)
+  ent[2] = 0; ent[3] = 0;             // 팔레트 색 수 · reserved
+  ent.writeUInt16LE(1, 4);            // planes
+  ent.writeUInt16LE(32, 6);           // bit depth
+  ent.writeUInt32LE(png.length, 8);   // 본문 길이
+  ent.writeUInt32LE(6 + 16, 12);      // 본문 오프셋
+  const file = join(ROOT, 'favicon.ico');
+  writeFileSync(file, Buffer.concat([dir, ent, png]));
+  console.log('wrote', file);
+}

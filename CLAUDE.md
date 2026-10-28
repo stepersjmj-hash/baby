@@ -75,7 +75,9 @@ js/
     judge.js              동그라미/콕 찍기 판정 — 화면과 자가 점검이 같이 쓴다
 assets/icon-*.png         홈 화면·바로가기 아이콘 7종 (32·120·152·167·180·192·512)
 assets/og.png             링크 미리보기용 1200×630
-                          둘 다 tools/make-icons.mjs 로 생성 (직접 편집하지 말 것)
+favicon.ico               관례 파일명 폴백 (32px PNG 를 품은 ICO)
+apple-touch-icon*.png     관례 파일명 폴백 (180px, precomposed 포함)
+                          넷 다 tools/make-icons.mjs 로 생성 (직접 편집하지 말 것)
 assets/voice/             음성 팩 (클립 169개 + manifest) — make-voice.mjs 로 생성
 tools/serve.mjs           개발용 정적 서버 (윈도우/맥 공통, LAN 주소 출력)
 tools/make-icons.mjs      아이콘 생성기 (외부 패키지 없이 PNG 직접 인코딩)
@@ -895,9 +897,16 @@ NUMBERS.forEach((L,i) => { const ox=(i%5)*190, oy=Math.floor(i/5)*190, s=0.166;
   - **`og:image` 는 절대 주소여야 한다** — 상대 주소는 카카오·네이버 수집기가
     못 받아 온다. 그래서 `index.html` 에 배포 주소가 박혀 있다
     (주소가 바뀌면 og 태그 4줄도 같이 고칠 것).
+  - **링크 태그를 안 읽고 관례 파일명을 찍어 보는 수집기가 있다.** 그래서 저장소
+    루트에 `favicon.ico`·`apple-touch-icon.png`·`apple-touch-icon-precomposed.png`
+    를 같은 그림으로 둔다 (생성기가 만든다). ICO 는 32px PNG 를 품은 형식이다.
+    - ★ 이 폴백은 **배포 경로(`/baby/`) 까지만** 통한다. origin 루트
+      (`stepersjmj-hash.github.io/`) 를 찍어 보는 수집기에는 소용이 없다 —
+      프로젝트 페이지는 origin 루트에 파일을 둘 수 없다. 거기까지 맞추려면
+      커스텀 도메인이나 `stepersjmj-hash.github.io` 저장소가 필요하다.
   - **아이콘을 바꿨으면 기기에서 바로가기를 지우고 다시 추가해야 한다.**
     바로가기는 만들 때 아이콘을 한 번 가져가 제 것으로 들고 있어서, 서버 파일만
-    바꿔서는 안 바뀐다.
+    바꿔서는 안 바뀐다. 네이버 앱은 **앱 캐시까지 지워야** 다시 받아 오는 일이 있다.
 
 ## 버전 두 가지
 
