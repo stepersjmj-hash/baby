@@ -894,9 +894,20 @@ NUMBERS.forEach((L,i) => { const ox=(i%5)*190, oy=Math.floor(i/5)*190, s=0.166;
   생성기가 알파를 전부 255 로 찍는 이유 — 투명하게 고치지 말 것.
   - 크기별 `sizes` 링크(120·152·167·180)와 `apple-touch-icon-precomposed` 는
     크기를 보고 고르는 수집기와 그 이름만 찾는 구형 수집기를 위한 것이다.
-  - **`og:image` 는 절대 주소여야 한다** — 상대 주소는 카카오·네이버 수집기가
-    못 받아 온다. 그래서 `index.html` 에 배포 주소가 박혀 있다
-    (주소가 바뀌면 og 태그 4줄도 같이 고칠 것).
+  - **`og:image` 와 대표 `apple-touch-icon` 은 절대 주소여야 한다.** 이 앱은
+    GitHub Pages **프로젝트** 페이지라 `/baby/` 아래에 사는데, 수집기가 상대
+    주소를 문서가 아니라 **origin 루트 기준으로** 푸는 일이 있다. 그러면
+    `stepersjmj-hash.github.io/assets/…` 를 찾고, origin 루트는 통째로 404 라
+    (사용자 저장소 `stepersjmj-hash.github.io` 가 없다) 아이콘을 못 받아
+    **제목 첫 글자 아이콘**으로 떨어진다. 실제로 아이폰 네이버 앱에서 이
+    증상을 겪었다.
+    - 그래서 `index.html` 의 맨 위 apple-touch-icon 두 줄과 favicon,
+      og 태그에 **배포 주소가 박혀 있다**. 상대 주소 줄들은 로컬 서버·
+      오프라인용으로 함께 남겨 둔다 (브라우저는 크기로 고른다).
+    - `rel="manifest"` 는 상대로 남겼다 — 절대로 박으면 로컬에서 띄울 때
+      배포본 매니페스트를 읽어 `start_url` 이 github.io 로 가 버린다.
+    - **주소가 바뀌면 이 절대 주소들을 전부 고칠 것** (index.html 의 링크 4줄
+      + og 태그 2줄).
   - **링크 태그를 안 읽고 관례 파일명을 찍어 보는 수집기가 있다.** 그래서 저장소
     루트에 `favicon.ico`·`apple-touch-icon.png`·`apple-touch-icon-precomposed.png`
     를 같은 그림으로 둔다 (생성기가 만든다). ICO 는 32px PNG 를 품은 형식이다.
